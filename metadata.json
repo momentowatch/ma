@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix  Remix monento v2",
+  "description": "Exclusive mobile luxury watch boutique featuring distinct Men\u0027s and Women\u0027s horology collections.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

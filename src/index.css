@@ -1,0 +1,353 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-serif: 'Cormorant Garamond', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+  
+  html, body, #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: #221F1B;
+    background-color: #FCFBF9;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, .font-serif-luxury {
+    font-family: var(--font-serif);
+  }
+}
+
+/* Custom scrollbar for subtle elegant feel */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #F6F3ED;
+}
+::-webkit-scrollbar-thumb {
+  background: #D8CBB5;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B8934A;
+}
+
+@keyframes goldShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.gold-text-gradient {
+  background: linear-gradient(135deg, #B8934A 0%, #D4AF37 50%, #9A7836 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-border-glow {
+  box-shadow: 0 0 20px -5px rgba(212, 175, 55, 0.2);
+}
+
+/* ==========================================================================
+   MOMENTO v3 — depth, motion, buttons
+   ========================================================================== */
+
+:root {
+  /* --- Edges & elevation -------------------------------------------------- */
+  --edge-hairline: 0 0 0 1px rgba(232, 226, 213, 0.9);
+  --edge-hairline-gold: 0 0 0 1px rgba(212, 175, 55, 0.55);
+  --shadow-soft:
+    0 1px 2px rgba(34, 31, 27, 0.04),
+    0 6px 18px -10px rgba(34, 31, 27, 0.16);
+  --shadow-edge:
+    0 1px 2px rgba(34, 31, 27, 0.05),
+    0 10px 28px -14px rgba(34, 31, 27, 0.20),
+    0 28px 70px -34px rgba(34, 31, 27, 0.28);
+  --shadow-lift:
+    0 2px 4px rgba(34, 31, 27, 0.06),
+    0 18px 40px -18px rgba(34, 31, 27, 0.26),
+    0 44px 96px -44px rgba(34, 31, 27, 0.34);
+  --shadow-hero:
+    0 30px 60px -25px rgba(34, 31, 27, 0.45),
+    0 70px 150px -60px rgba(34, 31, 27, 0.55);
+  --shadow-inner-edge:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+    inset 0 0 46px rgba(34, 31, 27, 0.07);
+  --shadow-gold:
+    0 0 0 1px rgba(212, 175, 55, 0.40),
+    0 14px 34px -16px rgba(184, 147, 74, 0.45);
+
+  /* --- Motion ------------------------------------------------------------- */
+  --ease-lux: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-press: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --dur-fast: 160ms;
+  --dur-base: 260ms;
+  --dur-slow: 420ms;
+
+  /* --- Focus -------------------------------------------------------------- */
+  --focus-ring: 0 0 0 2px #FCFBF9, 0 0 0 4px rgba(184, 147, 74, 0.9);
+}
+
+/* --- Reusable surfaces ---------------------------------------------------- */
+.edge-shadow      { box-shadow: var(--edge-hairline), var(--shadow-edge); }
+.edge-shadow-soft { box-shadow: var(--edge-hairline), var(--shadow-soft); }
+.edge-shadow-lift { box-shadow: var(--edge-hairline), var(--shadow-lift); }
+
+.surface-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 20px;
+  box-shadow: var(--edge-hairline), var(--shadow-edge);
+  transition: box-shadow var(--dur-base) var(--ease-lux),
+              transform var(--dur-base) var(--ease-lux);
+}
+.surface-card:hover { box-shadow: var(--edge-hairline-gold), var(--shadow-lift); }
+
+/* Centred dialog shell */
+.modal-shell {
+  border-radius: 26px;
+  box-shadow: var(--edge-hairline), var(--shadow-hero);
+  overflow: hidden;
+}
+
+/* Right-hand drawer shell: shadow must read on its left edge */
+.drawer-shell {
+  box-shadow:
+    -1px 0 0 rgba(232, 226, 213, 0.9),
+    -18px 0 40px -24px rgba(34, 31, 27, 0.35),
+    -40px 0 100px -50px rgba(34, 31, 27, 0.55);
+}
+
+/* Sticky bars get a shadow only once the page is scrolled under them */
+.bar-shadow { box-shadow: 0 1px 0 rgba(232, 226, 213, 0.9), 0 12px 24px -22px rgba(34, 31, 27, 0.5); }
+
+/* --- Image frames --------------------------------------------------------- */
+.img-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #F8F5EE;
+  box-shadow: var(--edge-hairline), var(--shadow-soft);
+  transition: box-shadow var(--dur-slow) var(--ease-lux);
+}
+.img-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: var(--shadow-inner-edge);
+}
+.img-frame:hover { box-shadow: var(--edge-hairline-gold), var(--shadow-lift); }
+
+/* Free-standing product shot (transparent-ish WebP on sand) */
+.photo-drop img { filter: drop-shadow(0 18px 22px rgba(34, 31, 27, 0.20)); }
+
+/* --- Button system -------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.15rem;
+  border: 0;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--dur-base) var(--ease-lux),
+    color var(--dur-base) var(--ease-lux),
+    box-shadow var(--dur-base) var(--ease-lux),
+    transform var(--dur-fast) var(--ease-press);
+}
+.btn:active { transform: scale(0.965); }
+.btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.btn[disabled], .btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.btn-primary { background: #221F1B; color: #fff; box-shadow: var(--shadow-soft); }
+.btn-primary:hover { background: #B8934A; box-shadow: var(--shadow-lift); }
+
+.btn-gold { background: linear-gradient(135deg, #C9A253 0%, #B8934A 55%, #9A7836 100%); color: #fff; box-shadow: var(--shadow-soft); }
+.btn-gold:hover { box-shadow: var(--shadow-gold); }
+
+.btn-secondary { background: rgba(255, 255, 255, 0.88); color: #221F1B; box-shadow: var(--edge-hairline), var(--shadow-soft); }
+.btn-secondary:hover { color: #8E6F33; box-shadow: var(--shadow-gold); }
+
+.btn-ghost { background: transparent; color: #736B60; }
+.btn-ghost:hover { background: rgba(255, 255, 255, 0.75); color: #221F1B; box-shadow: var(--edge-hairline); }
+
+.btn-whatsapp { background: #25D366; color: #fff; box-shadow: 0 10px 24px -14px rgba(37, 211, 102, 0.9); }
+.btn-whatsapp:hover { background: #1FB457; box-shadow: 0 16px 34px -14px rgba(37, 211, 102, 0.95); }
+
+.btn-danger { background: rgba(255, 255, 255, 0.9); color: #A33A2B; box-shadow: var(--edge-hairline); }
+.btn-danger:hover { background: #A33A2B; color: #fff; }
+
+.btn-sm { min-height: 40px; font-size: 0.66rem; padding: 0 0.9rem; }
+.btn-lg { min-height: 54px; font-size: 0.78rem; padding: 0 1.7rem; }
+.btn-block { width: 100%; }
+
+/* Icon-only: still 44x44, never smaller */
+.btn-icon { width: 44px; min-width: 44px; padding: 0; }
+.btn-icon.btn-sm { width: 40px; min-width: 40px; }
+
+/* --- Tooltip for icon-only controls (desktop only) ------------------------ */
+.has-tip { position: relative; }
+.has-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: #221F1B;
+  color: #FCFBF9;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 70;
+  box-shadow: var(--shadow-edge);
+  transition: opacity var(--dur-fast) var(--ease-lux), transform var(--dur-fast) var(--ease-lux);
+}
+.has-tip:hover::after,
+.has-tip:focus-visible::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (hover: none) { .has-tip::after { display: none; } }
+
+/* --- Poster cards (gender gate) ------------------------------------------- */
+.poster-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 24px;
+  background: #EFEAE0;
+  box-shadow: var(--edge-hairline), var(--shadow-edge);
+  transform: perspective(1200px) translateZ(0);
+  transform-style: preserve-3d;
+  will-change: transform;
+  cursor: pointer;
+  transition:
+    box-shadow var(--dur-slow) var(--ease-lux),
+    transform var(--dur-slow) var(--ease-lux);
+}
+.poster-card:hover,
+.poster-card:focus-visible {
+  outline: none;
+  box-shadow: var(--edge-hairline-gold), var(--shadow-lift);
+}
+.poster-card:focus-visible { box-shadow: var(--focus-ring), var(--shadow-lift); }
+.poster-card:active { transform: perspective(1200px) scale(0.982); }
+
+.poster-media { position: absolute; inset: 0; z-index: 0; }
+.poster-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  transform: scale(1.03);
+  transition: transform 900ms var(--ease-lux), filter 600ms var(--ease-lux);
+}
+.poster-card:hover .poster-media img { transform: scale(1.09); filter: saturate(1.06) contrast(1.03); }
+
+.poster-veil {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(18, 16, 14, 0.00) 28%,
+    rgba(18, 16, 14, 0.42) 66%,
+    rgba(18, 16, 14, 0.86) 100%);
+  transition: opacity var(--dur-slow) var(--ease-lux);
+}
+.poster-card:hover .poster-veil { opacity: 0.92; }
+
+/* the requested edge shadow, painted inside the poster */
+.poster-edge {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    inset 0 -70px 90px -50px rgba(0, 0, 0, 0.65),
+    inset 0 0 130px rgba(0, 0, 0, 0.28);
+}
+
+/* gold light sweeping across the poster on hover */
+.poster-sheen::before {
+  content: "";
+  position: absolute;
+  top: -10%; bottom: -10%; left: 0;
+  width: 38%;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(105deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 244, 214, 0.55) 48%,
+    rgba(255, 255, 255, 0) 100%);
+  transform: skewX(-14deg) translateX(-160%);
+  opacity: 0;
+}
+.poster-card:hover .poster-sheen::before { animation: sheenSweep 950ms var(--ease-lux) forwards; }
+@keyframes sheenSweep {
+  0%   { transform: skewX(-14deg) translateX(-160%); opacity: 0; }
+  12%  { opacity: 0.95; }
+  100% { transform: skewX(-14deg) translateX(430%); opacity: 0; }
+}
+
+/* caption lift */
+.poster-caption { transition: transform var(--dur-slow) var(--ease-lux), letter-spacing var(--dur-slow) var(--ease-lux); }
+.poster-card:hover .poster-caption { transform: translateY(-6px); }
+
+/* --- Zoom transition layer ------------------------------------------------ */
+.zoom-veil {
+  position: fixed; inset: 0; z-index: 90;
+  background: #FCFBF9;
+  opacity: 0;
+  pointer-events: none;
+}
+.zoom-clone {
+  position: fixed; z-index: 91;
+  overflow: hidden;
+  transform-origin: center center;
+  will-change: transform, border-radius, opacity;
+  box-shadow: var(--shadow-hero);
+  pointer-events: none;
+}
+.zoom-clone img { width: 100%; height: 100%; object-fit: cover; }
+
+/* --- Page enter animation ------------------------------------------------- */
+@keyframes pageRise {
+  from { opacity: 0; transform: translate3d(0, 14px, 0) scale(0.994); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+.page-enter { animation: pageRise 420ms var(--ease-lux) both; }
+
+/* --- Body scroll lock while an overlay is open ---------------------------- */
+.scroll-lock { overflow: hidden !important; touch-action: none; }
+
+/* --- Respect reduced motion ------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
