@@ -1,0 +1,35 @@
+# ---------------------------------------------------------------------------
+#  MOMENTO — Casa Watch Boutique
+#  https://monentowatch.github.io/ma/
+#
+#  ملاحظة مهمة: زواحف البحث تقرأ robots.txt من جذر النطاق فقط، أي من
+#  https://monentowatch.github.io/robots.txt — وليس من /ma/robots.txt.
+#  هذا الملف يبقى صحيحاً ومفيداً للتوثيق وللأدوات، لكن سلطته الحقيقية
+#  لا تتحقق إلا إذا أُعيدت تسمية المستودع إلى monentowatch.github.io.
+# ---------------------------------------------------------------------------
+
+User-agent: *
+Allow: /
+
+# Client-rendered single page application: the HTML body is empty until the
+# JavaScript bundle runs. Blocking the bundle makes Google index a blank
+# page. Never disallow this path.
+Allow: /ma/assets/
+
+# Build by-products, never content.
+Disallow: /*.map$
+
+# Watch photography is served from cdn.jsdelivr.net, a third-party origin.
+# This file has no authority there, so no image rules are declared here.
+
+# Polite pacing for the crawlers that honour it. Google ignores this line.
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Crawl-delay: 20
+
+Sitemap: https://monentowatch.github.io/ma/sitemap.xml

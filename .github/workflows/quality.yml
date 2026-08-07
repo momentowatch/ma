@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: quality-monento-${{ github.ref }}
+  group: quality-momento-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -30,4 +30,4 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_BASE_PATH: /monento/
+          VITE_BASE_PATH: /ma/

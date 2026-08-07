@@ -8,7 +8,8 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:4173/monento/',
+    // يجب أن يطابق base في vite.config.ts: /ma/
+    baseURL: 'http://localhost:4173/ma/',
     trace: 'on-first-retry',
   },
   projects: [
@@ -17,7 +18,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run build && npm run preview -- --port 4173 --strictPort',
-    url: 'http://localhost:4173/monento/',
+    url: 'http://localhost:4173/ma/',
     reuseExistingServer: !process.env.CI,
     timeout: 300000,
   },

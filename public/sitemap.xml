@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!--
+    MOMENTO is a single page application. src/hooks/useAppNavigation.ts calls
+    history.pushState without ever changing the address, so the catalogue,
+    the men's and women's collections and every watch detail view all live
+    at one single URL. Declaring invented paths such as /men, /women or
+    /watch/rolex-datejust would produce 404s in Search Console.
+
+    Product photography is hosted on cdn.jsdelivr.net, a third-party origin,
+    so no image entries are declared here.
+  -->
+  <url>
+    <loc>https://monentowatch.github.io/ma/</loc>
+    <lastmod>2026-08-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+</urlset>

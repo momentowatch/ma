@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-monento
+  group: pages-momento
   cancel-in-progress: false
 
 jobs:
@@ -38,18 +38,32 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_BASE_PATH: /monento/
+          VITE_BASE_PATH: /ma/
 
+      # الحارس يقارن ناتج البناء الفعلي بالقيمة الكاملة src="/ma/assets/".
+      # لا تستعمل 'assets/' وحدها: فهي تطابق أي base وتجعل الحارس بلا قيمة.
       - name: Guard against wrong base path
         run: |
-          grep -q '/monento/assets/' dist/index.html \
-            || (echo '::error::dist/index.html لا يشير إلى /monento/ — base خاطئ' && exit 1)
+          grep -q 'src="/ma/assets/' dist/index.html \
+            || { echo "::error::dist/index.html لا يشير إلى /ma/ — قيمة base خاطئة"; exit 1; }
+
+      - name: Verify SEO files reached dist
+        run: |
+          test -f dist/robots.txt  || { echo "::error::robots.txt missing from dist"; exit 1; }
+          test -f dist/sitemap.xml || { echo "::error::sitemap.xml missing from dist"; exit 1; }
+          test -f dist/index.html  || { echo "::error::index.html missing from dist"; exit 1; }
 
       - name: Add .nojekyll
         run: touch dist/.nojekyll
 
+      # enablement: true يحاول تفعيل GitHub Pages تلقائياً عبر واجهة GitHub
+      # إن لم يكن مفعّلاً. هذا هو علاج الخطأ:
+      #   "Get Pages site failed. Please verify that the repository has Pages enabled"
+      # وهو لا يُغني عن ضبط Settings ← Pages ← Source = GitHub Actions يدوياً.
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
