@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Heart, ChevronLeft, ChevronRight, MessageSquare, Smartphone, ShoppingBag, ShieldCheck } from 'lucide-react';
+import { Heart, ChevronLeft, ChevronRight, MessageSquare, ShoppingBag } from 'lucide-react';
 import { Watch } from '../types';
 import { BackButton } from './ui/BackButton';
 import { Button, IconButton } from './ui/Button';
@@ -323,39 +323,6 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
               >
                 {isWishlisted ? 'In Wishes' : 'Add to Wishes'}
               </Button>
-
-              <Button
-                variant="whatsapp"
-                size="lg"
-                block
-                icon={<MessageSquare className="w-4 h-4 fill-white" />}
-                onClick={handleDirectWhatsApp}
-                className="touch-manipulation"
-              >
-                Instant Order on WhatsApp
-              </Button>
-
-              {/* Secondary Actions: Try-On & Specialist Concierge */}
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={<Smartphone className="w-3.5 h-3.5 text-[#B8934A]" />}
-                  onClick={() => onOpenTryOn(watch)}
-                  className="touch-manipulation"
-                >
-                  Wrist Simulator
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={<ShieldCheck className="w-3.5 h-3.5 text-[#B8934A]" />}
-                  onClick={() => onOpenConcierge(watch, activeImageIndex + 1)}
-                  className="touch-manipulation"
-                >
-                  Specialist Help
-                </Button>
-              </div>
             </div>
 
             {/* Description */}
@@ -366,38 +333,6 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
 
         </div>
       </main>
-
-      {/* Sticky Mobile Action Bar (Always accessible on small screens) */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E8E2D5] p-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] sm:hidden flex items-center gap-2">
-        <IconButton
-          label={isWishlisted ? 'In Wishes' : 'Add to Wishes'}
-          icon={<Heart className={`w-5 h-5 ${isWishlisted ? 'fill-current text-[#B8934A]' : ''}`} />}
-          variant={isWishlisted ? 'gold' : 'secondary'}
-          size="lg"
-          onClick={() => onToggleWishlist(watch)}
-          className="touch-manipulation"
-        />
-        
-        <Button
-          variant="primary"
-          size="lg"
-          block
-          icon={<ShoppingBag className="w-4 h-4" />}
-          onClick={handleAcquire}
-          className="flex-1 text-xs touch-manipulation"
-        >
-          Acquire ({watch.formattedPrice})
-        </Button>
-
-        <IconButton
-          label="Order via WhatsApp"
-          icon={<MessageSquare className="w-5 h-5 fill-white" />}
-          variant="whatsapp"
-          size="lg"
-          onClick={handleDirectWhatsApp}
-          className="touch-manipulation"
-        />
-      </div>
     </div>
   );
 };

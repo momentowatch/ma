@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Heart, ShieldCheck, Sparkles, Gift, 
-  Smartphone, MessageSquare, Share2 
+  MessageSquare, Share2 
 } from 'lucide-react';
 import { Watch } from '../types';
 import { ModalShell } from './ui/ModalShell';
@@ -136,17 +136,6 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
                 </div>
               ))}
             </div>
-
-            {/* Virtual Try-On Pill button */}
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Smartphone className="w-3.5 h-3.5 text-[#B8934A]" />}
-              onClick={() => onOpenTryOn(watch)}
-              className="absolute bottom-3 left-3 shadow-md z-10"
-            >
-              Wrist Fit Simulator
-            </Button>
 
             {totalImages > 1 && (
               <div className="absolute bottom-3 right-3 z-10 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white tracking-wider pointer-events-none">

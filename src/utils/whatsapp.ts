@@ -6,8 +6,8 @@ export const formatWhatsAppLink = (message: string) => {
 
 export const createOrderWhatsAppMessage = (
   items: Array<{ watchName: string; price: number; referenceNumber: string; quantity: number; selectedPhotoNumber?: number; engravingText?: string; giftWrapping?: boolean }>,
-  totalPrice: number,
-  clientInfo?: { fullName?: string; phone?: string; address?: string; city?: string }
+  subtotalPrice: number,
+  clientInfo?: { fullName?: string; phone?: string; address?: string; city?: string; shippingFee?: number }
 ) => {
   let msg = `🛒 *NEW TIMEPIECE ORDER*\n`;
   msg += `----------------------------------\n`;
@@ -23,8 +23,15 @@ export const createOrderWhatsAppMessage = (
     }
   });
 
+  const shipping = clientInfo?.shippingFee ?? 0;
+  const finalTotal = subtotalPrice + shipping;
+
   msg += `----------------------------------\n`;
-  msg += `*Total: ${totalPrice} dh*\n`;
+  msg += `*Subtotal: ${subtotalPrice} dh*\n`;
+  if (clientInfo?.city && shipping > 0) {
+    msg += `*Livraison (${clientInfo.city}): ${shipping} dh*\n`;
+  }
+  msg += `*Total: ${finalTotal} dh*\n`;
 
   if (clientInfo && (clientInfo.fullName || clientInfo.address || clientInfo.phone)) {
     msg += `\n*Delivery Info:*\n`;
@@ -39,8 +46,8 @@ export const createOrderWhatsAppMessage = (
 
 export const createMultiWatchWhatsAppMessage = (
   items: Array<{ name: string; price: number; sku?: string; referenceNumber?: string; quantity: number; selectedPhotoNumber?: number; engravingText?: string; giftWrapping?: boolean }>,
-  totalPrice: number,
-  clientInfo?: { fullName?: string; phone?: string; address?: string; city?: string }
+  subtotalPrice: number,
+  clientInfo?: { fullName?: string; phone?: string; address?: string; city?: string; shippingFee?: number }
 ) => {
   return createOrderWhatsAppMessage(
     items.map(i => ({
@@ -52,7 +59,7 @@ export const createMultiWatchWhatsAppMessage = (
       engravingText: i.engravingText,
       giftWrapping: i.giftWrapping
     })),
-    totalPrice,
+    subtotalPrice,
     clientInfo
   );
 };

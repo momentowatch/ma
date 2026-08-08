@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { ShoppingBag, Trash2, Plus, Minus, MapPin, User, Phone, Home } from 'lucide-react';
+import { ShoppingBag, Trash2, Plus, Minus, MapPin, User, Phone, Home, Truck } from 'lucide-react';
 import { CartItem, Category } from '../types';
 import { createMultiWatchWhatsAppMessage, formatWhatsAppLink } from '../utils/whatsapp';
+import { shippingData, getShippingPrice } from '../data/shippingData';
+import { ShippingTariffsModal } from './ShippingTariffsModal';
 import { ModalShell } from './ui/ModalShell';
 import { Button, IconButton } from './ui/Button';
 
@@ -29,8 +31,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [city, setCity] = useState('Casablanca');
   const [address, setAddress] = useState('');
   const [showErrors, setShowErrors] = useState(false);
+  const [showTariffsModal, setShowTariffsModal] = useState(false);
 
   const totalPrice = cartItems.reduce((acc, item) => acc + item.watch.price * item.quantity, 0);
+  const shippingFee = getShippingPrice(city);
+  const grandTotal = totalPrice + shippingFee;
 
   const isFormValid = fullName.trim() !== '' && phone.trim() !== '' && city !== '' && address.trim() !== '';
 
@@ -56,6 +61,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         phone,
         city,
         address,
+        shippingFee,
       }
     );
     window.open(formatWhatsAppLink(msg), '_blank');
@@ -73,10 +79,23 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       icon={<ShoppingBag className="w-5 h-5 text-[#B8934A]" />}
       footer={
         cartItems.length > 0 ? (
-          <div className="space-y-4 font-sans">
-            <div className="flex items-center justify-between text-sm pt-1 border-t border-[#E8E2D5]">
-              <span className="text-[#8C8275] uppercase tracking-wider text-xs font-semibold">Total</span>
-              <span className="font-serif-luxury text-2xl font-semibold text-[#221F1B]">{totalPrice} dh</span>
+          <div className="space-y-3 font-sans">
+            <div className="space-y-1.5 pt-1 border-t border-[#E8E2D5] text-xs">
+              <div className="flex items-center justify-between text-[#736B60]">
+                <span>Subtotal</span>
+                <span className="font-medium text-[#221F1B]">{totalPrice} dh</span>
+              </div>
+              <div className="flex items-center justify-between text-[#736B60]">
+                <span className="flex items-center gap-1">
+                  <Truck className="w-3 h-3 text-[#B8934A]" />
+                  Livraison ({city})
+                </span>
+                <span className="font-medium text-[#221F1B]">{shippingFee} dh</span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-[#E8E2D5]/60 text-sm font-semibold">
+                <span className="text-[#221F1B] uppercase tracking-wider text-xs">Total</span>
+                <span className="font-serif-luxury text-2xl text-[#221F1B]">{grandTotal} dh</span>
+              </div>
             </div>
 
             {showErrors && !isFormValid && (
@@ -91,7 +110,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               block
               onClick={handleCheckout}
             >
-              Checkout
+              Checkout ({grandTotal} dh)
             </Button>
 
             <div className="flex items-center justify-between pt-1">
@@ -263,25 +282,29 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   </div>
 
                   <div>
-                    <label className="font-medium text-[#736B60] block mb-1">
-                      City <span className="text-[#A33A2B] font-bold">*</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-medium text-[#736B60] block">
+                        City <span className="text-[#A33A2B] font-bold">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowTariffsModal(true)}
+                        className="text-[10px] text-[#B8934A] hover:underline font-medium flex items-center gap-0.5"
+                      >
+                        <Truck className="w-3 h-3" /> Grille des tarifs
+                      </button>
+                    </div>
                     <select
                       required
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       className="w-full bg-white border border-[#E8E2D5] focus:border-[#B8934A] rounded-xl py-2.5 px-3 text-[#221F1B] outline-none text-xs"
                     >
-                      <option value="Casablanca">Casablanca</option>
-                      <option value="Rabat">Rabat</option>
-                      <option value="Marrakech">Marrakech</option>
-                      <option value="Tanger">Tanger</option>
-                      <option value="Agadir">Agadir</option>
-                      <option value="Fès">Fès</option>
-                      <option value="Meknès">Meknès</option>
-                      <option value="Oujda">Oujda</option>
-                      <option value="Tétouan">Tétouan</option>
-                      <option value="Other Morocco City">Other City in Morocco</option>
+                      {shippingData.map((loc) => (
+                        <option key={loc.name} value={loc.name}>
+                          {loc.name} ({loc.price} dh)
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -317,6 +340,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
         )}
       </div>
+
+      <ShippingTariffsModal
+        isOpen={showTariffsModal}
+        onClose={() => setShowTariffsModal(false)}
+        selectedCity={city}
+        onSelectCity={(newCity) => setCity(newCity)}
+      />
     </ModalShell>
   );
 };
