@@ -29,9 +29,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('Casablanca');
+  const [isCityFocused, setIsCityFocused] = useState(false);
   const [address, setAddress] = useState('');
   const [showErrors, setShowErrors] = useState(false);
   const [showTariffsModal, setShowTariffsModal] = useState(false);
+
+  const matchingCities = city.trim()
+    ? shippingData.filter((s) => s.name.toLowerCase().includes(city.trim().toLowerCase())).slice(0, 6)
+    : shippingData.slice(0, 6);
 
   const totalPrice = cartItems.reduce((acc, item) => acc + item.watch.price * item.quantity, 0);
   const shippingFee = getShippingPrice(city);
@@ -294,18 +299,74 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         <Truck className="w-3 h-3" /> Grille des tarifs
                       </button>
                     </div>
-                    <select
-                      required
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="w-full bg-white border border-[#E8E2D5] focus:border-[#B8934A] rounded-xl py-2.5 px-3 text-[#221F1B] outline-none text-xs"
-                    >
-                      {shippingData.map((loc) => (
-                        <option key={loc.name} value={loc.name}>
-                          {loc.name} ({loc.price} dh)
-                        </option>
-                      ))}
-                    </select>
+
+                    <div className="relative">
+                      <MapPin className="w-3.5 h-3.5 text-[#8C8275] absolute left-3 top-3 pointer-events-none" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="Tapez votre ville (ex. Casablanca, Rabat, Fès...)"
+                        value={city}
+                        onChange={(e) => {
+                          setCity(e.target.value);
+                          setIsCityFocused(true);
+                          if (showErrors && e.target.value.trim()) setShowErrors(false);
+                        }}
+                        onFocus={() => setIsCityFocused(true)}
+                        onBlur={() => {
+                          setTimeout(() => setIsCityFocused(false), 200);
+                        }}
+                        className={`w-full bg-white border rounded-xl py-2.5 pl-9 pr-24 text-[#221F1B] placeholder-[#A8A095] outline-none text-xs transition-colors ${
+                          showErrors && !city.trim()
+                            ? 'border-[#A33A2B]'
+                            : 'border-[#E8E2D5] focus:border-[#B8934A]'
+                        }`}
+                      />
+
+                      {/* Live Tarif Badge Pill right inside the input */}
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#F5F2EB] text-[#221F1B] px-2 py-1 rounded-lg text-[10px] font-semibold border border-[#E8E2D5] flex items-center gap-1">
+                        <Truck className="w-3 h-3 text-[#B8934A]" />
+                        <span>{shippingFee} dh</span>
+                      </div>
+
+                      {/* Autocomplete Suggestions Dropdown */}
+                      {isCityFocused && matchingCities.length > 0 && (
+                        <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-[#E8E2D5] rounded-xl shadow-lg max-h-48 overflow-y-auto divide-y divide-[#F5F2EB]">
+                          {matchingCities.map((loc) => (
+                            <button
+                              key={loc.name}
+                              type="button"
+                              onMouseDown={() => {
+                                setCity(loc.name);
+                                setIsCityFocused(false);
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-[#FAF8F5] flex items-center justify-between text-xs transition-colors"
+                            >
+                              <div>
+                                <span className="font-semibold text-[#221F1B]">{loc.name}</span>
+                                {loc.region && <span className="text-[10px] text-[#8C8275] ml-1.5">({loc.region})</span>}
+                              </div>
+                              <span className="font-bold text-[#B8934A] text-xs">{loc.price} dh</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Active Tariff Badge Bar */}
+                    <div className="mt-1.5 px-2.5 py-1.5 bg-[#FAF8F5] border border-[#E8E2D5] rounded-lg flex items-center justify-between text-[11px]">
+                      <span className="text-[#736B60] flex items-center gap-1.5">
+                        <Truck className="w-3.5 h-3.5 text-[#B8934A]" />
+                        Tarif de livraison :
+                      </span>
+                      <span className="font-serif-luxury font-bold text-[#221F1B] text-xs">
+                        {shippingFee} dh
+                      </span>
+                    </div>
+
+                    {showErrors && !city.trim() && (
+                      <p className="text-[10px] text-[#A33A2B] mt-0.5 font-medium">Veuillez indiquer votre ville</p>
+                    )}
                   </div>
                 </div>
 
