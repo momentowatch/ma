@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Heart, ShieldCheck, Sparkles, Gift, 
-  MessageSquare, Share2 
+  MessageSquare, Share2, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Watch } from '../types';
 import { ModalShell } from './ui/ModalShell';
@@ -41,29 +41,47 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
 
   const totalImages = watch.images.length;
 
+  const scrollToImage = (index: number) => {
+    if (!scrollContainerRef.current) return;
+    isProgrammaticScroll.current = true;
+    const container = scrollContainerRef.current;
+    const targetLeft = index * container.clientWidth;
+    container.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    setActiveImageIndex(index);
+    setTimeout(() => {
+      isProgrammaticScroll.current = false;
+    }, 400);
+  };
+
   useEffect(() => {
+    setActiveImageIndex(0);
     if (scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      const targetLeft = activeImageIndex * container.clientWidth;
-      if (Math.abs(container.scrollLeft - targetLeft) > 5) {
-        isProgrammaticScroll.current = true;
-        container.scrollTo({ left: targetLeft, behavior: 'smooth' });
-        const timer = setTimeout(() => {
-          isProgrammaticScroll.current = false;
-        }, 350);
-        return () => clearTimeout(timer);
-      }
+      scrollContainerRef.current.scrollLeft = 0;
     }
-  }, [activeImageIndex]);
+  }, [watch.id]);
 
   const handleSliderScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (isProgrammaticScroll.current) return;
     const container = e.currentTarget;
-    if (!container.clientWidth) return;
+    if (!container.clientWidth || totalImages <= 1) return;
     const newIndex = Math.round(container.scrollLeft / container.clientWidth);
-    if (newIndex !== activeImageIndex && newIndex >= 0 && newIndex < totalImages) {
+    if (newIndex >= 0 && newIndex < totalImages && newIndex !== activeImageIndex) {
       setActiveImageIndex(newIndex);
     }
+  };
+
+  const prevImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (totalImages <= 1) return;
+    const newIndex = activeImageIndex === 0 ? totalImages - 1 : activeImageIndex - 1;
+    scrollToImage(newIndex);
+  };
+
+  const nextImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (totalImages <= 1) return;
+    const newIndex = activeImageIndex === totalImages - 1 ? 0 : activeImageIndex + 1;
+    scrollToImage(newIndex);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -71,18 +89,7 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
     touchStartY.current = e.touches[0].clientY;
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null) return;
-    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 35) {
-      if (deltaX < 0) {
-        setActiveImageIndex(prev => (prev === totalImages - 1 ? 0 : prev + 1));
-      } else {
-        setActiveImageIndex(prev => (prev === 0 ? totalImages - 1 : prev - 1));
-      }
-    }
+  const handleTouchEnd = () => {
     touchStartX.current = null;
     touchStartY.current = null;
   };
@@ -122,7 +129,7 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
                 <div key={idx} className="w-full h-full flex-shrink-0 snap-center relative">
                   <img
                     src={img}
-                    alt={`${watch.name} - ${idx + 1}`}
+                    alt={`${watch.name} - photo ${idx + 1}`}
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const fallback = watch.imageFallbacks[idx] || watch.imageFallbacks[0];
@@ -138,9 +145,29 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
             </div>
 
             {totalImages > 1 && (
-              <div className="absolute bottom-3 right-3 z-10 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white tracking-wider pointer-events-none">
-                {activeImageIndex + 1} / {totalImages}
-              </div>
+              <>
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10 hidden sm:block">
+                  <IconButton
+                    label="Previous photo"
+                    icon={<ChevronLeft className="w-4 h-4 text-[#221F1B]" />}
+                    onClick={prevImage}
+                    variant="secondary"
+                    size="sm"
+                  />
+                </div>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 hidden sm:block">
+                  <IconButton
+                    label="Next photo"
+                    icon={<ChevronRight className="w-4 h-4 text-[#221F1B]" />}
+                    onClick={nextImage}
+                    variant="secondary"
+                    size="sm"
+                  />
+                </div>
+                <div className="absolute bottom-3 right-3 z-10 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white tracking-wider pointer-events-none">
+                  {activeImageIndex + 1} / {totalImages}
+                </div>
+              </>
             )}
           </div>
 
@@ -151,7 +178,7 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => setActiveImageIndex(idx)}
+                  onClick={() => scrollToImage(idx)}
                   aria-label={`Go to photo ${idx + 1}`}
                   className={`h-2 rounded-full transition-all duration-300 ${
                     activeImageIndex === idx ? 'w-6 bg-[#B8934A]' : 'w-2 bg-[#E8E2D5]'
@@ -168,7 +195,7 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => setActiveImageIndex(idx)}
+                  onClick={() => scrollToImage(idx)}
                   className={`w-14 h-14 shrink-0 rounded-xl overflow-hidden border-2 transition-all bg-white cursor-pointer ${
                     activeImageIndex === idx ? 'border-[#B8934A] scale-105 shadow-xs' : 'border-[#E8E2D5] opacity-60 hover:opacity-100'
                   }`}

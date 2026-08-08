@@ -1,10 +1,42 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Heart, ChevronLeft, ChevronRight, MessageSquare, ShoppingBag } from 'lucide-react';
 import { Watch } from '../types';
 import { BackButton } from './ui/BackButton';
 import { Button, IconButton } from './ui/Button';
 import { createSingleWatchWhatsAppMessage, formatWhatsAppLink } from '../utils/whatsapp';
+
+/* ------------------------------------------------------------------------- *
+ * Looping photo carousel tuning
+ * ------------------------------------------------------------------------- */
+const SLIDE_MS = 460;
+const SLIDE_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+const AXIS_LOCK_PX = 8;
+const COMMIT_RATIO = 0.18;
+const COMMIT_VELOCITY = 0.45;
+const WHEEL_STEP_PX = 42;
+const WHEEL_RESET_MS = 140;
+const NEIGHBOUR_RADIUS = 2;
+
+/**
+ * Module-level decode cache. It outlives the component, so coming back to a
+ * watch that was already viewed costs zero network and zero decode time.
+ */
+const warmedPhotos = new Set<string>();
+
+const warmPhoto = (url?: string) => {
+  if (!url || warmedPhotos.has(url)) return;
+  warmedPhotos.add(url);
+  const img = new Image();
+  img.referrerPolicy = 'no-referrer';
+  img.decoding = 'async';
+  img.src = url;
+  if (typeof img.decode === 'function') {
+    img.decode().catch(() => {
+      warmedPhotos.delete(url);
+    });
+  }
+};
 
 interface WatchDetailPageProps {
   watch: Watch;
@@ -29,12 +61,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
   onOpenTryOn,
   onOpenConcierge,
 }) => {
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [scrolled, setScrolled] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const isProgrammaticScroll = useRef(false);
-  const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -44,62 +71,293 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
   }, []);
 
   const totalImages = watch.images.length;
+  const looping = totalImages > 1;
 
-  useEffect(() => {
-    if (scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      const targetLeft = activeImageIndex * container.clientWidth;
-      if (Math.abs(container.scrollLeft - targetLeft) > 5) {
-        isProgrammaticScroll.current = true;
-        container.scrollTo({ left: targetLeft, behavior: 'smooth' });
-        const timer = setTimeout(() => {
-          isProgrammaticScroll.current = false;
-        }, 350);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [activeImageIndex]);
+  /**
+   * The track renders [clone of last, ...real photos, clone of first].
+   * `position` is the index inside that track, so real photo i sits at i + 1.
+   * Sliding onto a clone is a genuine animation; the moment it lands we swap to
+   * its identical real twin with the transition switched off, which is
+   * invisible. That is what makes last -> first slide instead of jump.
+   */
+  const maxPosition = looping ? totalImages + 1 : 0;
+  const [position, setPosition] = useState(looping ? 1 : 0);
+  const [animated, setAnimated] = useState(false);
 
-  const handleSliderScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (isProgrammaticScroll.current) return;
-    const container = e.currentTarget;
-    if (!container.clientWidth) return;
-    const newIndex = Math.round(container.scrollLeft / container.clientWidth);
-    if (newIndex !== activeImageIndex && newIndex >= 0 && newIndex < totalImages) {
-      setActiveImageIndex(newIndex);
-    }
+  const activeImageIndex = looping
+    ? (((position - 1) % totalImages) + totalImages) % totalImages
+    : 0;
+
+  const slides = useMemo(() => {
+    const real = watch.images.map((src, realIndex) => ({
+      src,
+      realIndex,
+      key: 'photo-' + realIndex,
+    }));
+    if (!looping) return real;
+    return [
+      { src: watch.images[totalImages - 1], realIndex: totalImages - 1, key: 'clone-head' },
+      ...real,
+      { src: watch.images[0], realIndex: 0, key: 'clone-tail' },
+    ];
+  }, [watch.images, totalImages, looping]);
+
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const positionRef = useRef(position);
+  const maxPositionRef = useRef(maxPosition);
+  const loopingRef = useRef(looping);
+  const dragPxRef = useRef(0);
+  const pointerIdRef = useRef<number | null>(null);
+  const startXRef = useRef(0);
+  const startYRef = useRef(0);
+  const startTimeRef = useRef(0);
+  const axisRef = useRef<'idle' | 'x'>('idle');
+  const rafRef = useRef(0);
+  const settleTimerRef = useRef(0);
+
+  useLayoutEffect(() => {
+    positionRef.current = position;
+    maxPositionRef.current = maxPosition;
+    loopingRef.current = looping;
+  });
+
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+  /** Single writer for the track transform. Percentages resolve against the
+   *  track's own border box, which is exactly one viewport wide. */
+  const paint = useCallback((pos: number, offsetPx: number, withTransition: boolean) => {
+    const track = trackRef.current;
+    if (!track) return;
+    track.style.transition = withTransition ? 'transform ' + SLIDE_MS + 'ms ' + SLIDE_EASE : 'none';
+    track.style.transform = 'translate3d(calc(' + -pos * 100 + '% + ' + offsetPx + 'px), 0, 0)';
+  }, []);
+
+  useLayoutEffect(() => {
+    paint(position, 0, animated);
+  }, [position, animated, paint]);
+
+  /** Swap a clone for its real twin with the transition off. */
+  const normalise = useCallback(() => {
+    if (!loopingRef.current) return;
+    const pos = positionRef.current;
+    const max = maxPositionRef.current;
+    if (pos !== 0 && pos !== max) return;
+    setAnimated(false);
+    setPosition(pos === 0 ? max - 1 : 1);
+  }, []);
+
+  const handleTrackTransitionEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget || e.propertyName !== 'transform') return;
+    normalise();
   };
+
+  /** Fail-safe: if transitionend never fires, settle anyway. */
+  useEffect(() => {
+    if (!animated) return;
+    window.clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = window.setTimeout(() => {
+      setAnimated(false);
+      normalise();
+    }, SLIDE_MS + 140);
+    return () => window.clearTimeout(settleTimerRef.current);
+  }, [animated, position, normalise]);
+
+  const step = useCallback((direction: 1 | -1) => {
+    if (!loopingRef.current) return;
+    setAnimated(true);
+    setPosition(prev => {
+      const next = prev + direction;
+      if (next < 0) return 0;
+      if (next > maxPositionRef.current) return maxPositionRef.current;
+      return next;
+    });
+  }, []);
+
+  const goToIndex = useCallback((realIndex: number) => {
+    setAnimated(true);
+    setPosition(loopingRef.current ? realIndex + 1 : 0);
+  }, []);
 
   const prevImage = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setActiveImageIndex(prev => (prev === 0 ? totalImages - 1 : prev - 1));
+    step(-1);
   };
 
   const nextImage = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setActiveImageIndex(prev => (prev === totalImages - 1 ? 0 : prev + 1));
+    step(1);
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
+  const endDrag = useCallback((commitDirection: 1 | -1 | 0) => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    }
+    dragPxRef.current = 0;
+    pointerIdRef.current = null;
+    axisRef.current = 'idle';
+    if (commitDirection === 0) {
+      paint(positionRef.current, 0, true);
+      setAnimated(true);
+      return;
+    }
+    step(commitDirection);
+  }, [paint, step]);
+
+  /* Pointer Events cover finger, mouse and pen through one code path. */
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!looping) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (pointerIdRef.current !== null) return;
+    pointerIdRef.current = e.pointerId;
+    startXRef.current = e.clientX;
+    startYRef.current = e.clientY;
+    startTimeRef.current = now();
+    axisRef.current = 'idle';
+    dragPxRef.current = 0;
+    window.clearTimeout(settleTimerRef.current);
+    paint(positionRef.current, 0, false);
+    setAnimated(false);
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null) return;
-    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerIdRef.current !== e.pointerId) return;
+    const dx = e.clientX - startXRef.current;
+    const dy = e.clientY - startYRef.current;
 
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 35) {
-      if (deltaX < 0) {
-        nextImage();
-      } else {
-        prevImage();
+    if (axisRef.current === 'idle') {
+      if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
+      if (Math.abs(dx) <= Math.abs(dy)) {
+        // Vertical intent: give the gesture back to the page.
+        pointerIdRef.current = null;
+        return;
+      }
+      axisRef.current = 'x';
+      if (typeof e.currentTarget.setPointerCapture === 'function') {
+        e.currentTarget.setPointerCapture(e.pointerId);
       }
     }
-    touchStartX.current = null;
-    touchStartY.current = null;
+
+    const width = viewportRef.current ? viewportRef.current.clientWidth : 1;
+    dragPxRef.current = Math.max(-width, Math.min(width, dx));
+    if (!rafRef.current) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = 0;
+        paint(positionRef.current, dragPxRef.current, false);
+      });
+    }
   };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerIdRef.current !== e.pointerId) return;
+    const dx = dragPxRef.current;
+    const width = viewportRef.current ? viewportRef.current.clientWidth : 1;
+    const elapsed = Math.max(1, now() - startTimeRef.current);
+    const velocity = Math.abs(dx) / elapsed;
+    const committed =
+      axisRef.current === 'x' &&
+      (Math.abs(dx) > width * COMMIT_RATIO || velocity > COMMIT_VELOCITY);
+    if (
+      typeof e.currentTarget.hasPointerCapture === 'function' &&
+      e.currentTarget.hasPointerCapture(e.pointerId)
+    ) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    endDrag(committed ? (dx < 0 ? 1 : -1) : 0);
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerIdRef.current !== e.pointerId) return;
+    endDrag(0);
+  };
+
+  /* Trackpad: horizontal wheel deltas, registered non-passive so the browser
+     does not steal the gesture. Vertical deltas fall through to the page. */
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || !looping) return;
+    let accumulated = 0;
+    let resetTimer = 0;
+    let lastStepAt = 0;
+    const onWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+      event.preventDefault();
+      accumulated += event.deltaX;
+      window.clearTimeout(resetTimer);
+      resetTimer = window.setTimeout(() => {
+        accumulated = 0;
+      }, WHEEL_RESET_MS);
+      const stamp = now();
+      if (Math.abs(accumulated) >= WHEEL_STEP_PX && stamp - lastStepAt > SLIDE_MS * 0.8) {
+        lastStepAt = stamp;
+        const direction: 1 | -1 = accumulated > 0 ? 1 : -1;
+        accumulated = 0;
+        step(direction);
+      }
+    };
+    viewport.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      viewport.removeEventListener('wheel', onWheel);
+      window.clearTimeout(resetTimer);
+    };
+  }, [looping, step]);
+
+  /* Keyboard navigation for the left and right arrow keys. */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!looping) return;
+      if (e.key === 'ArrowLeft') {
+        step(-1);
+      } else if (e.key === 'ArrowRight') {
+        step(1);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [looping, step]);
+
+  /* Reset to the first photo whenever a different watch is opened. */
+  useEffect(() => {
+    setAnimated(false);
+    setPosition(totalImages > 1 ? 1 : 0);
+  }, [watch.id, totalImages]);
+
+  /* Warm the immediate neighbours so a swipe never waits on the network. */
+  useEffect(() => {
+    if (totalImages === 0) return;
+    for (let offset = -NEIGHBOUR_RADIUS; offset <= NEIGHBOUR_RADIUS; offset += 1) {
+      const index = (((activeImageIndex + offset) % totalImages) + totalImages) % totalImages;
+      warmPhoto(watch.images[index]);
+    }
+  }, [activeImageIndex, totalImages, watch.images]);
+
+  /* Warm the rest of the set while the browser is idle. */
+  useEffect(() => {
+    if (totalImages === 0) return;
+    const warmAll = () => {
+      watch.images.forEach(url => warmPhoto(url));
+    };
+    const scope = window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (typeof scope.requestIdleCallback === 'function') {
+      const handle = scope.requestIdleCallback(warmAll, { timeout: 2500 });
+      return () => {
+        if (typeof scope.cancelIdleCallback === 'function') scope.cancelIdleCallback(handle);
+      };
+    }
+    const timer = window.setTimeout(warmAll, 900);
+    return () => window.clearTimeout(timer);
+  }, [watch.images, totalImages]);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      window.clearTimeout(settleTimerRef.current);
+    };
+  }, []);
 
   const handleAcquire = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -118,20 +376,6 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
     );
     window.open(formatWhatsAppLink(msg), '_blank');
   };
-
-  // Keyboard navigation for ← / →
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (totalImages <= 1) return;
-      if (e.key === 'ArrowLeft') {
-        prevImage();
-      } else if (e.key === 'ArrowRight') {
-        nextImage();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [totalImages]);
 
   return (
     <div className="min-h-screen bg-[#FCFBF9] text-[#221F1B] pb-28 sm:pb-16 relative w-full overflow-x-hidden font-sans">
@@ -161,32 +405,41 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
             transition={{ duration: 0.3 }}
           >
             <div className="aspect-square img-frame photo-drop relative mb-3 overflow-hidden rounded-2xl group">
-              {/* Slide-by-slide image container with touch swipe support */}
+              {/* Looping photo track driven by finger, mouse drag and trackpad */}
               <div
-                ref={scrollContainerRef}
-                onScroll={handleSliderScroll}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-                className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scroll-smooth touch-pan-x scrollbar-none"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                ref={viewportRef}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerCancel}
+                className="w-full h-full overflow-hidden touch-pan-y select-none cursor-grab active:cursor-grabbing"
               >
-                {watch.images.map((img, idx) => (
-                  <div key={idx} className="w-full h-full flex-shrink-0 snap-center relative">
-                    <img
-                      src={img}
-                      alt={`${watch.name} - ${idx + 1}`}
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        const fallback = watch.imageFallbacks[idx] || watch.imageFallbacks[0];
-                        if (fallback && e.currentTarget.src !== fallback) {
-                          e.currentTarget.src = fallback;
-                        }
-                      }}
-                      className="w-full h-full object-cover select-none"
-                      draggable={false}
-                    />
-                  </div>
-                ))}
+                <div
+                  ref={trackRef}
+                  onTransitionEnd={handleTrackTransitionEnd}
+                  className="flex w-full h-full will-change-transform"
+                  style={{ backfaceVisibility: 'hidden' }}
+                >
+                  {slides.map((slide, slideIdx) => (
+                    <div key={slide.key} className="w-full h-full flex-shrink-0 relative">
+                      <img
+                        src={slide.src}
+                        alt={`${watch.name} - photo ${slide.realIndex + 1}`}
+                        referrerPolicy="no-referrer"
+                        decoding="async"
+                        loading={Math.abs(slideIdx - position) <= 1 ? 'eager' : 'lazy'}
+                        onError={(e) => {
+                          const fallback = watch.imageFallbacks[slide.realIndex] || watch.imageFallbacks[0];
+                          if (fallback && e.currentTarget.src !== fallback) {
+                            e.currentTarget.src = fallback;
+                          }
+                        }}
+                        className="w-full h-full object-cover select-none"
+                        draggable={false}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {totalImages > 1 && (
@@ -223,7 +476,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setActiveImageIndex(idx)}
+                    onClick={() => goToIndex(idx)}
                     aria-label={`Go to photo ${idx + 1}`}
                     className={`h-2 rounded-full transition-all duration-300 ${
                       activeImageIndex === idx ? 'w-6 bg-[#B8934A]' : 'w-2 bg-[#E8E2D5]'
@@ -242,7 +495,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setActiveImageIndex(idx);
+                      goToIndex(idx);
                     }}
                     aria-label={'View photo ' + (idx + 1)}
                     className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all cursor-pointer touch-manipulation ${
@@ -336,4 +589,3 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
     </div>
   );
 };
-
