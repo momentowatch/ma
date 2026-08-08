@@ -82,7 +82,6 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
    */
   const maxPosition = looping ? totalImages + 1 : 0;
   const [position, setPosition] = useState(looping ? 1 : 0);
-  const [animated, setAnimated] = useState(false);
 
   const activeImageIndex = looping
     ? (((position - 1) % totalImages) + totalImages) % totalImages
@@ -107,6 +106,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
   const positionRef = useRef(position);
   const maxPositionRef = useRef(maxPosition);
   const loopingRef = useRef(looping);
+  const paintedRef = useRef(-1);
   const dragPxRef = useRef(0);
   const pointerIdRef = useRef<number | null>(null);
   const startXRef = useRef(0);
@@ -133,51 +133,85 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
     track.style.transform = 'translate3d(calc(' + -pos * 100 + '% + ' + offsetPx + 'px), 0, 0)';
   }, []);
 
-  useLayoutEffect(() => {
-    paint(position, 0, animated);
-  }, [position, animated, paint]);
+  /**
+   * The one and only way the track ever moves. Ref, DOM and React state are
+   * written together and synchronously, so nothing can read a stale position
+   * and a skipped re-render can never swallow a move.
+   */
+  const applyPosition = useCallback((next: number, withTransition: boolean) => {
+    positionRef.current = next;
+    paintedRef.current = next;
+    paint(next, 0, withTransition);
+    setPosition(next);
+  }, [paint]);
 
-  /** Swap a clone for its real twin with the transition off. */
-  const normalise = useCallback(() => {
+  /** Reconciliation only. A live drag offset is transient, so it is left alone. */
+  useLayoutEffect(() => {
+    if (paintedRef.current === position) return;
+    paintedRef.current = position;
+    paint(position, 0, false);
+  }, [position, paint]);
+
+  /**
+   * Swaps a clone for its identical real twin with the transition off.
+   * Idempotent and synchronous, so it is safe to call before any move: once it
+   * returns, the current position is guaranteed to be a real photo.
+   */
+  const settle = useCallback(() => {
+    window.clearTimeout(settleTimerRef.current);
     if (!loopingRef.current) return;
     const pos = positionRef.current;
     const max = maxPositionRef.current;
     if (pos !== 0 && pos !== max) return;
-    setAnimated(false);
-    setPosition(pos === 0 ? max - 1 : 1);
-  }, []);
+    applyPosition(pos === 0 ? max - 1 : 1, false);
+    const track = trackRef.current;
+    if (track) {
+      // Flush the swap into the computed style so a move issued in this same
+      // tick starts from here instead of sliding across the whole strip.
+      void track.offsetWidth;
+    }
+  }, [applyPosition]);
 
-  const handleTrackTransitionEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget || e.propertyName !== 'transform') return;
-    normalise();
-  };
-
-  /** Fail-safe: if transitionend never fires, settle anyway. */
-  useEffect(() => {
-    if (!animated) return;
+  /**
+   * transitionend is only an accelerator. This timer is the guarantee, so an
+   * interrupted, cancelled or dropped transition can never strand the track on
+   * a clone - which is exactly what used to freeze the last photo.
+   */
+  const armSettle = useCallback(() => {
     window.clearTimeout(settleTimerRef.current);
-    settleTimerRef.current = window.setTimeout(() => {
-      setAnimated(false);
-      normalise();
-    }, SLIDE_MS + 140);
-    return () => window.clearTimeout(settleTimerRef.current);
-  }, [animated, position, normalise]);
+    settleTimerRef.current = window.setTimeout(settle, SLIDE_MS + 60);
+  }, [settle]);
 
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const onTransitionDone = (event: TransitionEvent) => {
+      if (event.target !== track || event.propertyName !== 'transform') return;
+      settle();
+    };
+    track.addEventListener('transitionend', onTransitionDone);
+    track.addEventListener('transitioncancel', onTransitionDone);
+    return () => {
+      track.removeEventListener('transitionend', onTransitionDone);
+      track.removeEventListener('transitioncancel', onTransitionDone);
+    };
+  }, [settle]);
+
+  /** Exactly one slide. Settling first means the target is never clamped. */
   const step = useCallback((direction: 1 | -1) => {
     if (!loopingRef.current) return;
-    setAnimated(true);
-    setPosition(prev => {
-      const next = prev + direction;
-      if (next < 0) return 0;
-      if (next > maxPositionRef.current) return maxPositionRef.current;
-      return next;
-    });
-  }, []);
+    settle();
+    applyPosition(positionRef.current + direction, true);
+    armSettle();
+  }, [applyPosition, armSettle, settle]);
 
   const goToIndex = useCallback((realIndex: number) => {
-    setAnimated(true);
-    setPosition(loopingRef.current ? realIndex + 1 : 0);
-  }, []);
+    settle();
+    const next = loopingRef.current ? realIndex + 1 : 0;
+    if (next === positionRef.current) return;
+    applyPosition(next, true);
+    armSettle();
+  }, [applyPosition, armSettle, settle]);
 
   const prevImage = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -198,8 +232,8 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
     pointerIdRef.current = null;
     axisRef.current = 'idle';
     if (commitDirection === 0) {
+      // Rebound to the photo we started from. Nothing else changes.
       paint(positionRef.current, 0, true);
-      setAnimated(true);
       return;
     }
     step(commitDirection);
@@ -216,9 +250,10 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
     startTimeRef.current = now();
     axisRef.current = 'idle';
     dragPxRef.current = 0;
-    window.clearTimeout(settleTimerRef.current);
+    // Land on a real photo before the finger moves, so grabbing the strip in
+    // the middle of a wrap can never leave it parked on a clone.
+    settle();
     paint(positionRef.current, 0, false);
-    setAnimated(false);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -227,15 +262,19 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
     const dy = e.clientY - startYRef.current;
 
     if (axisRef.current === 'idle') {
-      if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
-      if (Math.abs(dx) <= Math.abs(dy)) {
+      // Decide only once one axis is clearly ahead, so a swipe that starts
+      // slightly diagonal is no longer thrown away.
+      if (Math.abs(dx) >= AXIS_LOCK_PX && Math.abs(dx) > Math.abs(dy)) {
+        axisRef.current = 'x';
+        if (typeof e.currentTarget.setPointerCapture === 'function') {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }
+      } else if (Math.abs(dy) >= AXIS_LOCK_PX && Math.abs(dy) > Math.abs(dx)) {
         // Vertical intent: give the gesture back to the page.
         pointerIdRef.current = null;
         return;
-      }
-      axisRef.current = 'x';
-      if (typeof e.currentTarget.setPointerCapture === 'function') {
-        e.currentTarget.setPointerCapture(e.pointerId);
+      } else {
+        return;
       }
     }
 
@@ -255,16 +294,21 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
     const width = viewportRef.current ? viewportRef.current.clientWidth : 1;
     const elapsed = Math.max(1, now() - startTimeRef.current);
     const velocity = Math.abs(dx) / elapsed;
-    const committed =
-      axisRef.current === 'x' &&
-      (Math.abs(dx) > width * COMMIT_RATIO || velocity > COMMIT_VELOCITY);
-    if (
-      typeof e.currentTarget.hasPointerCapture === 'function' &&
-      e.currentTarget.hasPointerCapture(e.pointerId)
-    ) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
+    const far = Math.abs(dx) > width * COMMIT_RATIO;
+    // A flick must still cover real distance, otherwise a fast twitch fired a
+    // step in whatever direction the finger happened to jitter.
+    const flick = velocity > COMMIT_VELOCITY && Math.abs(dx) > width * 0.06;
+    const committed = axisRef.current === 'x' && (far || flick);
+    const target = e.currentTarget;
+    // endDrag first: releasing capture can fire pointerleave, and the guard in
+    // handlePointerCancel must already see a cleared pointer id.
     endDrag(committed ? (dx < 0 ? 1 : -1) : 0);
+    if (
+      typeof target.hasPointerCapture === 'function' &&
+      target.hasPointerCapture(e.pointerId)
+    ) {
+      target.releasePointerCapture(e.pointerId);
+    }
   };
 
   const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -318,10 +362,10 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
   }, [looping, step]);
 
   /* Reset to the first photo whenever a different watch is opened. */
-  useEffect(() => {
-    setAnimated(false);
-    setPosition(totalImages > 1 ? 1 : 0);
-  }, [watch.id, totalImages]);
+  useLayoutEffect(() => {
+    window.clearTimeout(settleTimerRef.current);
+    applyPosition(totalImages > 1 ? 1 : 0, false);
+  }, [watch.id, totalImages, applyPosition]);
 
   /* Warm the immediate neighbours so a swipe never waits on the network. */
   useEffect(() => {
@@ -412,11 +456,11 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerCancel}
+                onPointerLeave={handlePointerCancel}
                 className="w-full h-full overflow-hidden touch-pan-y select-none cursor-grab active:cursor-grabbing"
               >
                 <div
                   ref={trackRef}
-                  onTransitionEnd={handleTrackTransitionEnd}
                   className="flex w-full h-full will-change-transform"
                   style={{ backfaceVisibility: 'hidden' }}
                 >

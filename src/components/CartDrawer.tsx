@@ -131,7 +131,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-[10px] text-[#8C8275]">{item.watch.referenceNumber}</span>
-                        <span className="text-[10px] uppercase font-semibold text-[#B8934A] bg-[#FAF5EB] px-2 py-0.5 rounded border border-[#E5DBCA]">
+                        <span className="hidden text-[10px] uppercase font-semibold text-[#B8934A] bg-[#FAF5EB] px-2 py-0.5 rounded border border-[#E5DBCA]">
                           Photo #{item.selectedPhotoNumber || 1}
                         </span>
                       </div>
