@@ -7,7 +7,7 @@ export const formatWhatsAppLink = (message: string) => {
 export const createOrderWhatsAppMessage = (
   items: Array<{ watchName: string; price: number; referenceNumber: string; quantity: number; selectedPhotoNumber?: number; engravingText?: string; giftWrapping?: boolean }>,
   subtotalPrice: number,
-  clientInfo?: { fullName?: string; phone?: string; address?: string; city?: string; shippingFee?: number }
+  clientInfo?: { fullName?: string; phone?: string; address?: string; city?: string; shippingFee?: number; includeBox?: boolean }
 ) => {
   let msg = `🛒 *NEW TIMEPIECE ORDER*\n`;
   msg += `----------------------------------\n`;
@@ -24,10 +24,14 @@ export const createOrderWhatsAppMessage = (
   });
 
   const shipping = clientInfo?.shippingFee ?? 0;
-  const finalTotal = subtotalPrice + shipping;
+  const boxFee = clientInfo?.includeBox ? 25 : 0;
+  const finalTotal = subtotalPrice + shipping + boxFee;
 
   msg += `----------------------------------\n`;
   msg += `*Subtotal: ${subtotalPrice} dh*\n`;
+  if (clientInfo?.includeBox) {
+    msg += `*Coffret de la montre / Box: +25 dh*\n`;
+  }
   if (clientInfo?.city && shipping > 0) {
     msg += `*Livraison (${clientInfo.city}): ${shipping} dh*\n`;
   }
@@ -39,6 +43,7 @@ export const createOrderWhatsAppMessage = (
     if (clientInfo.phone) msg += `• Phone: ${clientInfo.phone}\n`;
     if (clientInfo.address) msg += `• Address: ${clientInfo.address}\n`;
     if (clientInfo.city) msg += `• City: ${clientInfo.city}\n`;
+    msg += `• Coffret montre: ${clientInfo.includeBox ? 'Oui (+25 dh)' : 'Non'}\n`;
   }
 
   return msg;
@@ -47,7 +52,7 @@ export const createOrderWhatsAppMessage = (
 export const createMultiWatchWhatsAppMessage = (
   items: Array<{ name: string; price: number; sku?: string; referenceNumber?: string; quantity: number; selectedPhotoNumber?: number; engravingText?: string; giftWrapping?: boolean }>,
   subtotalPrice: number,
-  clientInfo?: { fullName?: string; phone?: string; address?: string; city?: string; shippingFee?: number }
+  clientInfo?: { fullName?: string; phone?: string; address?: string; city?: string; shippingFee?: number; includeBox?: boolean }
 ) => {
   return createOrderWhatsAppMessage(
     items.map(i => ({

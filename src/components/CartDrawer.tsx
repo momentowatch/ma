@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingBag, Trash2, Plus, Minus, MapPin, User, Phone, Home, Truck } from 'lucide-react';
+import { ShoppingBag, Trash2, Plus, Minus, MapPin, User, Phone, Home, Truck, Package } from 'lucide-react';
 import { CartItem, Category } from '../types';
 import { createMultiWatchWhatsAppMessage, formatWhatsAppLink } from '../utils/whatsapp';
 import { shippingData, getShippingPrice } from '../data/shippingData';
@@ -31,6 +31,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [city, setCity] = useState('Casablanca');
   const [isCityFocused, setIsCityFocused] = useState(false);
   const [address, setAddress] = useState('');
+  const [includeBox, setIncludeBox] = useState<boolean>(false);
   const [showErrors, setShowErrors] = useState(false);
   const [showTariffsModal, setShowTariffsModal] = useState(false);
 
@@ -40,7 +41,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const totalPrice = cartItems.reduce((acc, item) => acc + item.watch.price * item.quantity, 0);
   const shippingFee = getShippingPrice(city);
-  const grandTotal = totalPrice + shippingFee;
+  const boxFee = includeBox ? 25 : 0;
+  const grandTotal = totalPrice + shippingFee + boxFee;
 
   const isFormValid = fullName.trim() !== '' && phone.trim() !== '' && city !== '' && address.trim() !== '';
 
@@ -67,6 +69,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         city,
         address,
         shippingFee,
+        includeBox,
       }
     );
     window.open(formatWhatsAppLink(msg), '_blank');
@@ -82,51 +85,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       title="Shopping Cart"
       subtitle={itemCountLabel}
       icon={<ShoppingBag className="w-5 h-5 text-[#B8934A]" />}
-      footer={
-        cartItems.length > 0 ? (
-          <div className="space-y-3 font-sans">
-            <div className="space-y-1.5 pt-1 border-t border-[#E8E2D5] text-xs">
-              <div className="flex items-center justify-between text-[#736B60]">
-                <span>Subtotal</span>
-                <span className="font-medium text-[#221F1B]">{totalPrice} dh</span>
-              </div>
-              <div className="flex items-center justify-between text-[#736B60]">
-                <span className="flex items-center gap-1">
-                  <Truck className="w-3 h-3 text-[#B8934A]" />
-                  Livraison ({city})
-                </span>
-                <span className="font-medium text-[#221F1B]">{shippingFee} dh</span>
-              </div>
-              <div className="flex items-center justify-between pt-1 border-t border-[#E8E2D5]/60 text-sm font-semibold">
-                <span className="text-[#221F1B] uppercase tracking-wider text-xs">Total</span>
-                <span className="font-serif-luxury text-2xl text-[#221F1B]">{grandTotal} dh</span>
-              </div>
-            </div>
-
-            {showErrors && !isFormValid && (
-              <p className="text-xs text-[#A33A2B] bg-[#FFF8F7] border border-[#A33A2B]/20 p-2 rounded-lg font-medium text-center">
-                Please fill in all mandatory delivery details (*) before proceeding.
-              </p>
-            )}
-
-            <Button
-              variant="primary"
-              size="lg"
-              block
-              onClick={handleCheckout}
-            >
-              Checkout ({grandTotal} dh)
-            </Button>
-
-            <div className="flex items-center justify-between pt-1">
-              <Button variant="danger" size="sm" onClick={onClearCart}>
-                Clear Cart
-              </Button>
-              <span className="text-[10px] text-[#8C8275] uppercase tracking-wider">Cash on delivery</span>
-            </div>
-          </div>
-        ) : null
-      }
     >
       <div className="p-4 sm:p-6 font-sans w-full max-w-full overflow-x-hidden">
         {cartItems.length === 0 ? (
@@ -147,6 +105,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Cart Items List */}
             <div className="divide-y divide-[#E8E2D5]">
               {cartItems.map((item) => {
                 const photoIdx = (item.selectedPhotoNumber || 1) - 1;
@@ -186,36 +145,78 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       )}
                     </div>
 
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <IconButton
-                      label="Remove item"
-                      icon={<Trash2 className="w-4 h-4 text-[#A33A2B]" />}
-                      onClick={() => onRemoveItem(item.id)}
-                      variant="ghost"
-                      size="sm"
-                    />
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <IconButton
+                        label="Remove item"
+                        icon={<Trash2 className="w-4 h-4 text-[#A33A2B]" />}
+                        onClick={() => onRemoveItem(item.id)}
+                        variant="ghost"
+                        size="sm"
+                      />
 
-                    <div className="flex items-center gap-1 bg-white border border-[#E8E2D5] rounded-full p-0.5">
-                      <IconButton
-                        label="Decrease quantity"
-                        icon={<Minus className="w-3 h-3" />}
-                        onClick={() => onUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                        variant="ghost"
-                        size="sm"
-                      />
-                      <span className="w-6 text-center text-xs font-semibold">{item.quantity}</span>
-                      <IconButton
-                        label="Increase quantity"
-                        icon={<Plus className="w-3 h-3" />}
-                        onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                        variant="ghost"
-                        size="sm"
-                      />
+                      <div className="flex items-center gap-1 bg-white border border-[#E8E2D5] rounded-full p-0.5">
+                        <IconButton
+                          label="Decrease quantity"
+                          icon={<Minus className="w-3 h-3" />}
+                          onClick={() => onUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                          variant="ghost"
+                          size="sm"
+                        />
+                        <span className="w-6 text-center text-xs font-semibold">{item.quantity}</span>
+                        <IconButton
+                          label="Increase quantity"
+                          icon={<Plus className="w-3 h-3" />}
+                          onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                          variant="ghost"
+                          size="sm"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
                 );
               })}
+            </div>
+
+            {/* Watch Box Option Question */}
+            <div className="p-4 bg-[#FAF8F5] border border-[#E8E2D5] rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-[#B8934A]" />
+                  <h4 className="text-xs font-semibold text-[#221F1B]">
+                    Avez-vous besoin du coffret de la montre ?
+                  </h4>
+                </div>
+                <span className="text-[10px] font-bold text-[#B8934A] bg-[#FAF5EB] px-2 py-0.5 rounded border border-[#E5DBCA]">
+                  +25 dh
+                </span>
+              </div>
+              <p className="text-[11px] text-[#736B60]">
+                Coffret de présentation officiel & emballage cadeau.
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIncludeBox(true)}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    includeBox
+                      ? 'bg-[#B8934A] text-white border-[#B8934A] shadow-sm font-semibold'
+                      : 'bg-white text-[#736B60] border-[#E8E2D5] hover:border-[#B8934A]'
+                  }`}
+                >
+                  <span>Oui (+25 dh)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIncludeBox(false)}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    !includeBox
+                      ? 'bg-[#221F1B] text-white border-[#221F1B] shadow-sm font-semibold'
+                      : 'bg-white text-[#736B60] border-[#E8E2D5] hover:border-[#221F1B]'
+                  }`}
+                >
+                  <span>Non (0 dh)</span>
+                </button>
+              </div>
             </div>
 
             {/* Delivery Details Section */}
@@ -396,6 +397,58 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <p className="text-[10px] text-[#A33A2B] mt-0.5 font-medium">Address is required</p>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Order Summary & Checkout Action - integrated inside the SAME scroll area */}
+            <div className="pt-4 border-t border-[#E8E2D5] space-y-3 font-sans">
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between text-[#736B60]">
+                  <span>Subtotal</span>
+                  <span className="font-medium text-[#221F1B]">{totalPrice} dh</span>
+                </div>
+                {includeBox && (
+                  <div className="flex items-center justify-between text-[#736B60]">
+                    <span className="flex items-center gap-1">
+                      <Package className="w-3 h-3 text-[#B8934A]" />
+                      Coffret montre
+                    </span>
+                    <span className="font-medium text-[#221F1B]">+25 dh</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-[#736B60]">
+                  <span className="flex items-center gap-1">
+                    <Truck className="w-3 h-3 text-[#B8934A]" />
+                    Livraison ({city})
+                  </span>
+                  <span className="font-medium text-[#221F1B]">{shippingFee} dh</span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-[#E8E2D5]/60 text-sm font-semibold">
+                  <span className="text-[#221F1B] uppercase tracking-wider text-xs">Total</span>
+                  <span className="font-serif-luxury text-2xl text-[#221F1B]">{grandTotal} dh</span>
+                </div>
+              </div>
+
+              {showErrors && !isFormValid && (
+                <p className="text-xs text-[#A33A2B] bg-[#FFF8F7] border border-[#A33A2B]/20 p-2.5 rounded-xl font-medium text-center">
+                  Please fill in all mandatory delivery details (*) before proceeding.
+                </p>
+              )}
+
+              <Button
+                variant="primary"
+                size="lg"
+                block
+                onClick={handleCheckout}
+              >
+                Checkout ({grandTotal} dh)
+              </Button>
+
+              <div className="flex items-center justify-between pt-1">
+                <Button variant="danger" size="sm" onClick={onClearCart}>
+                  Clear Cart
+                </Button>
+                <span className="text-[10px] text-[#8C8275] uppercase tracking-wider">Cash on delivery</span>
               </div>
             </div>
           </div>
