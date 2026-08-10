@@ -72,7 +72,7 @@ export interface Watch {
   sku: string;                // internal fulfilment code: 'CW-CAR-01-M' / 'CW-CAR-01-W'
   price: number;
   currency: 'MAD';
-  formattedPrice: string;     // `${price} dh`
+  formattedPrice: string;     // `${price} dhs`
   shortDescription: string;
   fullDescription: string;
   photoIndices: number[];     // original 1-based indices shown by this listing

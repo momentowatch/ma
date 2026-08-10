@@ -22,6 +22,10 @@ export interface ModalShellProps {
   children: React.ReactNode;
 }
 
+export const DrawerShell: React.FC<Omit<ModalShellProps, 'layout'>> = (props) => {
+  return <ModalShell {...props} layout="drawer" />;
+};
+
 export const ModalShell: React.FC<ModalShellProps> = ({
   open,
   onClose,

@@ -1,41 +1,45 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'motion/react';
-import { Heart, ChevronLeft, ChevronRight, MessageSquare, ShoppingBag } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ChevronDown, Check, Ruler, PenTool, Shield, RotateCcw, Box, ArrowRight, Play, Eye, MessageSquare, Plus, Minus, CreditCard, Sparkles } from 'lucide-react';
 import { Watch } from '../types';
-import { BackButton } from './ui/BackButton';
-import { Button, IconButton } from './ui/Button';
+import { getListingsForProduct } from '../data/watches';
+import { Button } from './ui/Button';
+import { useI18n, type TranslationKey } from '../i18n';
 import { createSingleWatchWhatsAppMessage, formatWhatsAppLink } from '../utils/whatsapp';
 
-/* ------------------------------------------------------------------------- *
- * Looping photo carousel tuning
- * ------------------------------------------------------------------------- */
-const SLIDE_MS = 460;
-const SLIDE_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
-const AXIS_LOCK_PX = 8;
-const COMMIT_RATIO = 0.18;
-const COMMIT_VELOCITY = 0.45;
-const WHEEL_STEP_PX = 42;
-const WHEEL_RESET_MS = 140;
-const NEIGHBOUR_RADIUS = 2;
+// A minimal video block for automatic/chronograph watches
+const MovementVideo: React.FC<{ type: 'chrono' | 'auto'; isRtl: boolean }> = ({ type, isRtl }) => {
+  const { t } = useI18n();
+  const videoSrc = type === 'chrono'
+    ? 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/watch/Rolex%20Oyster/crono.mp4'
+    : 'https://noureddinelmobaraki-web.github.io/nl-audio-cdn/watch/Rolex%20Oyster/autumatic.mp4';
+  const label = type === 'chrono' ? 'Chronograph' : 'Automatic';
 
-/**
- * Module-level decode cache. It outlives the component, so coming back to a
- * watch that was already viewed costs zero network and zero decode time.
- */
-const warmedPhotos = new Set<string>();
-
-const warmPhoto = (url?: string) => {
-  if (!url || warmedPhotos.has(url)) return;
-  warmedPhotos.add(url);
-  const img = new Image();
-  img.referrerPolicy = 'no-referrer';
-  img.decoding = 'async';
-  img.src = url;
-  if (typeof img.decode === 'function') {
-    img.decode().catch(() => {
-      warmedPhotos.delete(url);
-    });
-  }
+  return (
+    <div className="surface-card p-2 sm:p-3 mt-4 flex items-center gap-3">
+      <div className="w-16 sm:w-20 aspect-video bg-black rounded-lg overflow-hidden relative shrink-0">
+        <video
+          src={videoSrc}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover opacity-80"
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Play className="w-4 h-4 text-white/70" fill="currentColor" />
+        </div>
+      </div>
+      <div className="flex-1">
+        <span className="text-[9px] uppercase tracking-wider text-[#B8934A] font-semibold block">
+          {'Movement'}
+        </span>
+        <p className="text-xs text-[#221F1B] mt-0.5 line-clamp-2">
+          {'See it in action'}
+        </p>
+      </div>
+    </div>
+  );
 };
 
 interface WatchDetailPageProps {
@@ -47,7 +51,7 @@ interface WatchDetailPageProps {
   onToggleWishlist: (watch: Watch) => void;
   onAddToCart: (watch: Watch, engravingText?: string, giftWrapping?: boolean, selectedPhotoNumber?: number) => void;
   onOpenTryOn: (watch: Watch) => void;
-  onOpenConcierge: (watch: Watch, photoNumber?: number) => void;
+  onOpenConcierge: (watch: Watch, photoNumber: number) => void;
 }
 
 export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
@@ -61,575 +65,497 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
   onOpenTryOn,
   onOpenConcierge,
 }) => {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const totalImages = watch.images.length;
-  const looping = totalImages > 1;
-
-  /**
-   * The track renders [clone of last, ...real photos, clone of first].
-   * `position` is the index inside that track, so real photo i sits at i + 1.
-   * Sliding onto a clone is a genuine animation; the moment it lands we swap to
-   * its identical real twin with the transition switched off, which is
-   * invisible. That is what makes last -> first slide instead of jump.
-   */
-  const maxPosition = looping ? totalImages + 1 : 0;
-  const [position, setPosition] = useState(looping ? 1 : 0);
-
-  const activeImageIndex = looping
-    ? (((position - 1) % totalImages) + totalImages) % totalImages
-    : 0;
-
-  const slides = useMemo(() => {
-    const real = watch.images.map((src, realIndex) => ({
-      src,
-      realIndex,
-      key: 'photo-' + realIndex,
-    }));
-    if (!looping) return real;
-    return [
-      { src: watch.images[totalImages - 1], realIndex: totalImages - 1, key: 'clone-head' },
-      ...real,
-      { src: watch.images[0], realIndex: 0, key: 'clone-tail' },
-    ];
-  }, [watch.images, totalImages, looping]);
-
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const { t, tData, formatPrice, formatMeasure, isRtl } = useI18n();
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [wantsEngraving, setWantsEngraving] = useState(false);
+  const [engravingText, setEngravingText] = useState('');
+  const [wantsGiftWrap, setWantsGiftWrap] = useState(false);
+  const [showSpecs, setShowSpecs] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set([0]));
   const trackRef = useRef<HTMLDivElement>(null);
-  const positionRef = useRef(position);
-  const maxPositionRef = useRef(maxPosition);
-  const loopingRef = useRef(looping);
-  const paintedRef = useRef(-1);
-  const dragPxRef = useRef(0);
-  const pointerIdRef = useRef<number | null>(null);
-  const startXRef = useRef(0);
-  const startYRef = useRef(0);
-  const startTimeRef = useRef(0);
-  const axisRef = useRef<'idle' | 'x'>('idle');
-  const rafRef = useRef(0);
-  const settleTimerRef = useRef(0);
-
-  useLayoutEffect(() => {
-    positionRef.current = position;
-    maxPositionRef.current = maxPosition;
-    loopingRef.current = looping;
-  });
-
-  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
-
-  /** Single writer for the track transform. Percentages resolve against the
-   *  track's own border box, which is exactly one viewport wide. */
-  const paint = useCallback((pos: number, offsetPx: number, withTransition: boolean) => {
-    const track = trackRef.current;
-    if (!track) return;
-    track.style.transition = withTransition ? 'transform ' + SLIDE_MS + 'ms ' + SLIDE_EASE : 'none';
-    track.style.transform = 'translate3d(calc(' + -pos * 100 + '% + ' + offsetPx + 'px), 0, 0)';
-  }, []);
-
-  /**
-   * The one and only way the track ever moves. Ref, DOM and React state are
-   * written together and synchronously, so nothing can read a stale position
-   * and a skipped re-render can never swallow a move.
-   */
-  const applyPosition = useCallback((next: number, withTransition: boolean) => {
-    positionRef.current = next;
-    paintedRef.current = next;
-    paint(next, 0, withTransition);
-    setPosition(next);
-  }, [paint]);
-
-  /** Reconciliation only. A live drag offset is transient, so it is left alone. */
-  useLayoutEffect(() => {
-    if (paintedRef.current === position) return;
-    paintedRef.current = position;
-    paint(position, 0, false);
-  }, [position, paint]);
-
-  /**
-   * Swaps a clone for its identical real twin with the transition off.
-   * Idempotent and synchronous, so it is safe to call before any move: once it
-   * returns, the current position is guaranteed to be a real photo.
-   */
-  const settle = useCallback(() => {
-    window.clearTimeout(settleTimerRef.current);
-    if (!loopingRef.current) return;
-    const pos = positionRef.current;
-    const max = maxPositionRef.current;
-    if (pos !== 0 && pos !== max) return;
-    applyPosition(pos === 0 ? max - 1 : 1, false);
-    const track = trackRef.current;
-    if (track) {
-      // Flush the swap into the computed style so a move issued in this same
-      // tick starts from here instead of sliding across the whole strip.
-      void track.offsetWidth;
-    }
-  }, [applyPosition]);
-
-  /**
-   * transitionend is only an accelerator. This timer is the guarantee, so an
-   * interrupted, cancelled or dropped transition can never strand the track on
-   * a clone - which is exactly what used to freeze the last photo.
-   */
-  const armSettle = useCallback(() => {
-    window.clearTimeout(settleTimerRef.current);
-    settleTimerRef.current = window.setTimeout(settle, SLIDE_MS + 60);
-  }, [settle]);
-
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    const onTransitionDone = (event: TransitionEvent) => {
-      if (event.target !== track || event.propertyName !== 'transform') return;
-      settle();
-    };
-    track.addEventListener('transitionend', onTransitionDone);
-    track.addEventListener('transitioncancel', onTransitionDone);
-    return () => {
-      track.removeEventListener('transitionend', onTransitionDone);
-      track.removeEventListener('transitioncancel', onTransitionDone);
-    };
-  }, [settle]);
-
-  /** Exactly one slide. Settling first means the target is never clamped. */
-  const step = useCallback((direction: 1 | -1) => {
-    if (!loopingRef.current) return;
-    settle();
-    applyPosition(positionRef.current + direction, true);
-    armSettle();
-  }, [applyPosition, armSettle, settle]);
-
-  const goToIndex = useCallback((realIndex: number) => {
-    settle();
-    const next = loopingRef.current ? realIndex + 1 : 0;
-    if (next === positionRef.current) return;
-    applyPosition(next, true);
-    armSettle();
-  }, [applyPosition, armSettle, settle]);
-
-  const prevImage = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    step(-1);
+  
+  // Which collection grid does this specific listing belong to?
+  const parentGrid = watch.category;
+  
+  const handleImageLoad = (index: number) => {
+    setLoadedImages((prev) => new Set(prev).add(index));
   };
 
-  const nextImage = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    step(1);
+  const handleImageError = (index: number, e: React.SyntheticEvent<HTMLImageElement>) => {
+    if (watch.imageFallbacks[index] && e.currentTarget.src !== watch.imageFallbacks[index]) {
+      e.currentTarget.src = watch.imageFallbacks[index];
+    }
   };
 
-  const endDrag = useCallback((commitDirection: 1 | -1 | 0) => {
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = 0;
-    }
-    dragPxRef.current = 0;
-    pointerIdRef.current = null;
-    axisRef.current = 'idle';
-    if (commitDirection === 0) {
-      // Rebound to the photo we started from. Nothing else changes.
-      paint(positionRef.current, 0, true);
-      return;
-    }
-    step(commitDirection);
-  }, [paint, step]);
-
-  /* Pointer Events cover finger, mouse and pen through one code path. */
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!looping) return;
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    if (pointerIdRef.current !== null) return;
-    pointerIdRef.current = e.pointerId;
-    startXRef.current = e.clientX;
-    startYRef.current = e.clientY;
-    startTimeRef.current = now();
-    axisRef.current = 'idle';
-    dragPxRef.current = 0;
-    // Land on a real photo before the finger moves, so grabbing the strip in
-    // the middle of a wrap can never leave it parked on a clone.
-    settle();
-    paint(positionRef.current, 0, false);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (pointerIdRef.current !== e.pointerId) return;
-    const dx = e.clientX - startXRef.current;
-    const dy = e.clientY - startYRef.current;
-
-    if (axisRef.current === 'idle') {
-      // Decide only once one axis is clearly ahead, so a swipe that starts
-      // slightly diagonal is no longer thrown away.
-      if (Math.abs(dx) >= AXIS_LOCK_PX && Math.abs(dx) > Math.abs(dy)) {
-        axisRef.current = 'x';
-        if (typeof e.currentTarget.setPointerCapture === 'function') {
-          e.currentTarget.setPointerCapture(e.pointerId);
-        }
-      } else if (Math.abs(dy) >= AXIS_LOCK_PX && Math.abs(dy) > Math.abs(dx)) {
-        // Vertical intent: give the gesture back to the page.
-        pointerIdRef.current = null;
-        return;
-      } else {
-        return;
+  const scrollToImage = (index: number) => {
+    setActivePhotoIndex(index);
+    if (trackRef.current) {
+      const slides = Array.from(trackRef.current.children) as HTMLElement[];
+      const target = slides[index];
+      if (target) {
+        trackRef.current.scrollTo({
+          left: target.offsetLeft,
+          behavior: 'smooth',
+        });
       }
     }
-
-    const width = viewportRef.current ? viewportRef.current.clientWidth : 1;
-    dragPxRef.current = Math.max(-width, Math.min(width, dx));
-    if (!rafRef.current) {
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = 0;
-        paint(positionRef.current, dragPxRef.current, false);
-      });
-    }
   };
 
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (pointerIdRef.current !== e.pointerId) return;
-    const dx = dragPxRef.current;
-    const width = viewportRef.current ? viewportRef.current.clientWidth : 1;
-    const elapsed = Math.max(1, now() - startTimeRef.current);
-    const velocity = Math.abs(dx) / elapsed;
-    const far = Math.abs(dx) > width * COMMIT_RATIO;
-    // A flick must still cover real distance, otherwise a fast twitch fired a
-    // step in whatever direction the finger happened to jitter.
-    const flick = velocity > COMMIT_VELOCITY && Math.abs(dx) > width * 0.06;
-    const committed = axisRef.current === 'x' && (far || flick);
-    const target = e.currentTarget;
-    // endDrag first: releasing capture can fire pointerleave, and the guard in
-    // handlePointerCancel must already see a cleared pointer id.
-    endDrag(committed ? (dx < 0 ? 1 : -1) : 0);
-    if (
-      typeof target.hasPointerCapture === 'function' &&
-      target.hasPointerCapture(e.pointerId)
-    ) {
-      target.releasePointerCapture(e.pointerId);
-    }
-  };
-
-  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (pointerIdRef.current !== e.pointerId) return;
-    endDrag(0);
-  };
-
-  /* Trackpad: horizontal wheel deltas, registered non-passive so the browser
-     does not steal the gesture. Vertical deltas fall through to the page. */
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport || !looping) return;
-    let accumulated = 0;
-    let resetTimer = 0;
-    let lastStepAt = 0;
-    const onWheel = (event: WheelEvent) => {
-      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
-      event.preventDefault();
-      accumulated += event.deltaX;
-      window.clearTimeout(resetTimer);
-      resetTimer = window.setTimeout(() => {
-        accumulated = 0;
-      }, WHEEL_RESET_MS);
-      const stamp = now();
-      if (Math.abs(accumulated) >= WHEEL_STEP_PX && stamp - lastStepAt > SLIDE_MS * 0.8) {
-        lastStepAt = stamp;
-        const direction: 1 | -1 = accumulated > 0 ? 1 : -1;
-        accumulated = 0;
-        step(direction);
+  const handleScroll = () => {
+    if (trackRef.current) {
+      const track = trackRef.current;
+      const scrollLeft = track.scrollLeft;
+      const width = track.clientWidth;
+      const newIndex = Math.round(scrollLeft / width);
+      if (newIndex !== activePhotoIndex) {
+        setActivePhotoIndex(newIndex);
       }
-    };
-    viewport.addEventListener('wheel', onWheel, { passive: false });
-    return () => {
-      viewport.removeEventListener('wheel', onWheel);
-      window.clearTimeout(resetTimer);
-    };
-  }, [looping, step]);
-
-  /* Keyboard navigation for the left and right arrow keys. */
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!looping) return;
-      if (e.key === 'ArrowLeft') {
-        step(-1);
-      } else if (e.key === 'ArrowRight') {
-        step(1);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [looping, step]);
-
-  /* Reset to the first photo whenever a different watch is opened. */
-  useLayoutEffect(() => {
-    window.clearTimeout(settleTimerRef.current);
-    applyPosition(totalImages > 1 ? 1 : 0, false);
-  }, [watch.id, totalImages, applyPosition]);
-
-  /* Warm the immediate neighbours so a swipe never waits on the network. */
-  useEffect(() => {
-    if (totalImages === 0) return;
-    for (let offset = -NEIGHBOUR_RADIUS; offset <= NEIGHBOUR_RADIUS; offset += 1) {
-      const index = (((activeImageIndex + offset) % totalImages) + totalImages) % totalImages;
-      warmPhoto(watch.images[index]);
     }
-  }, [activeImageIndex, totalImages, watch.images]);
-
-  /* Warm the rest of the set while the browser is idle. */
-  useEffect(() => {
-    if (totalImages === 0) return;
-    const warmAll = () => {
-      watch.images.forEach(url => warmPhoto(url));
-    };
-    const scope = window as unknown as {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-    if (typeof scope.requestIdleCallback === 'function') {
-      const handle = scope.requestIdleCallback(warmAll, { timeout: 2500 });
-      return () => {
-        if (typeof scope.cancelIdleCallback === 'function') scope.cancelIdleCallback(handle);
-      };
-    }
-    const timer = window.setTimeout(warmAll, 900);
-    return () => window.clearTimeout(timer);
-  }, [watch.images, totalImages]);
-
-  useEffect(() => {
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      window.clearTimeout(settleTimerRef.current);
-    };
-  }, []);
-
-  const handleAcquire = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    onAddToCart(watch, undefined, undefined, activeImageIndex + 1);
   };
 
-  const handleDirectWhatsApp = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const handleDirectWhatsApp = () => {
+    const i18n = { t, tData, formatPrice };
     const msg = createSingleWatchWhatsAppMessage(
+      i18n,
       watch.name,
-      watch.price,
+      watch.price * quantity,
       watch.referenceNumber,
-      undefined,
-      undefined,
-      activeImageIndex + 1
+      wantsEngraving ? engravingText : undefined,
+      wantsGiftWrap,
+      activePhotoIndex + 1
     );
     window.open(formatWhatsAppLink(msg), '_blank');
   };
 
+  const hasVideo = watch.specs.movement === 'chrono' || watch.specs.movement === 'auto';
+  
+  const allListings = getListingsForProduct(watch.productId);
+  const hasMultipleGenders = allListings.length > 1;
+
+  const translatedSubCollection = tData('subCollection', watch.subCollection);
+  const translatedMaterial = tData('caseMaterial', watch.specs.caseMaterial);
+  const translatedMovement = tData('movement', watch.specs.movement);
+  const translatedStrap = tData('strapMaterial', watch.specs.strapMaterial);
+  const translatedGlass = tData('glass', watch.specs.glass);
+  const translatedBuckle = tData('buckle', watch.specs.buckle);
+  const formattedDiameter = formatMeasure(watch.specs.diameter);
+  const formattedThickness = formatMeasure(watch.specs.thickness);
+  const formattedPriceVal = formatPrice(watch.price);
+
   return (
-    <div className="min-h-screen bg-[#FCFBF9] text-[#221F1B] pb-28 sm:pb-16 relative w-full overflow-x-hidden font-sans">
-      {/* Top Navigation & Breadcrumb Bar */}
-      <div
-        className={
-          'sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-[#E8E2D5] px-4 sm:px-6 py-2.5 transition-shadow duration-300 ' +
-          (scrolled ? 'bar-shadow' : '')
-        }
-      >
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <BackButton label={backLabel} shortLabel={backLabelShort} onClick={onBack} tone="bar" />
-          <div className="text-[10px] uppercase tracking-[0.2em] text-[#8C8275]">
-            {watch.brand} · {watch.referenceNumber}
-          </div>
+    <div className="min-h-screen bg-[#FCFBF9] text-[#221F1B] pb-24 font-sans w-full max-w-full overflow-x-hidden">
+      {/* 
+        Header bar 
+      */}
+      <div className="sticky top-14 sm:top-16 z-30 bg-[#FCFBF9]/90 backdrop-blur-md border-b border-[#E8E2D5] py-2 px-2 sm:px-6 flex items-center justify-between">
+        <button
+          onClick={onBack}
+          className="group flex items-center gap-1.5 px-2 py-1 rounded-full hover:bg-black/5 transition-colors text-xs font-semibold uppercase tracking-wider text-[#736B60] hover:text-[#221F1B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8934A]"
+        >
+          <ArrowRight className="w-4 h-4 text-[#B8934A] group-hover:-translate-x-1 transition-transform rotate-180 rtl:rotate-0 rtl:group-hover:translate-x-1" />
+          <span className="hidden sm:inline">{backLabel}</span>
+          <span className="sm:hidden">{backLabelShort}</span>
+        </button>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggleWishlist(watch)}
+            className={isWishlisted ? 'text-[#B8934A]' : ''}
+          >
+            {isWishlisted ? t('card.removeFromWishlist') : t('card.saveToWishlist')}
+          </Button>
         </div>
       </div>
 
-      {/* Main Detail Container */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
+      <div className="max-w-7xl mx-auto px-0 sm:px-6 pt-0 sm:pt-6">
+        <div className="flex flex-col lg:flex-row gap-0 sm:gap-8 lg:gap-12 w-full max-w-full overflow-hidden">
           
-          {/* Left Column: Main Image & Thumbnails */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="aspect-square img-frame photo-drop relative mb-3 overflow-hidden rounded-2xl group">
-              {/* Looping photo track driven by finger, mouse drag and trackpad */}
+          {/* 
+            Left column: Gallery 
+          */}
+          <div className="w-full lg:w-[55%] shrink-0">
+            <div className="relative w-full aspect-square sm:rounded-2xl overflow-hidden bg-[#F5F2EC]">
               <div
-                ref={viewportRef}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerCancel={handlePointerCancel}
-                onPointerLeave={handlePointerCancel}
-                className="w-full h-full overflow-hidden touch-pan-y select-none cursor-grab active:cursor-grabbing"
+                ref={trackRef}
+                onScroll={handleScroll}
+                data-carousel-track
+                className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-none"
+                style={{ 
+                  scrollBehavior: 'auto',
+                  overscrollBehaviorX: 'contain',
+                }}
               >
-                <div
-                  ref={trackRef}
-                  className="flex w-full h-full will-change-transform"
-                  style={{ backfaceVisibility: 'hidden' }}
-                >
-                  {slides.map((slide, slideIdx) => (
-                    <div key={slide.key} className="w-full h-full flex-shrink-0 relative">
-                      <img
-                        src={slide.src}
-                        alt={`${watch.name} - photo ${slide.realIndex + 1}`}
-                        referrerPolicy="no-referrer"
-                        decoding="async"
-                        loading={Math.abs(slideIdx - position) <= 1 ? 'eager' : 'lazy'}
-                        onError={(e) => {
-                          const fallback = watch.imageFallbacks[slide.realIndex] || watch.imageFallbacks[0];
-                          if (fallback && e.currentTarget.src !== fallback) {
-                            e.currentTarget.src = fallback;
-                          }
-                        }}
-                        className="w-full h-full object-cover select-none"
-                        draggable={false}
-                      />
-                    </div>
-                  ))}
-                </div>
+                {watch.images.map((src, i) => (
+                  <div key={i} className="w-full h-full shrink-0 snap-center relative">
+                    {!loadedImages.has(i) && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-8 h-8 border-2 border-[#D8CBB5] border-t-[#B8934A] rounded-full animate-spin" />
+                      </div>
+                    )}
+                    <img
+                      src={src}
+                      alt={`${watch.name} - View ${i + 1}`}
+                      loading={i === 0 ? 'eager' : 'lazy'}
+                      referrerPolicy="no-referrer"
+                      onLoad={() => handleImageLoad(i)}
+                      onError={(e) => handleImageError(i, e)}
+                      className={`w-full h-full object-cover transition-opacity duration-500 ${
+                        loadedImages.has(i) ? 'opacity-100' : 'opacity-0'
+                      }`}
+                      style={loadedImages.has(i) ? undefined : { display: 'none' }}
+                    />
+                  </div>
+                ))}
               </div>
 
-              {totalImages > 1 && (
+              {watch.isNewRelease && (
+                <div className="absolute top-3 sm:top-4 start-3 sm:start-4 px-2.5 py-1 bg-[#B8934A] text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] rounded-full shadow-md z-10">
+                  {t('common.isNew')}
+                </div>
+              )}
+              {watch.isLimitedEdition && (
+                <div className="absolute top-3 sm:top-4 start-3 sm:start-4 px-2.5 py-1 bg-[#221F1B] text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] rounded-full shadow-md z-10">
+                  {'Limited Edition'}
+                </div>
+              )}
+
+              {watch.images.length > 1 && (
+                <div className="absolute bottom-3 sm:bottom-4 end-3 sm:end-4 bg-black/40 backdrop-blur-md text-white text-[10px] font-mono px-2.5 py-1 rounded-full z-10 force-ltr">
+                  {activePhotoIndex + 1} / {watch.images.length}
+                </div>
+              )}
+              
+              <div className="absolute bottom-3 sm:bottom-4 start-3 sm:start-4 z-10">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Eye className="w-3.5 h-3.5 text-[#B8934A]" />}
+                  onClick={() => onOpenTryOn(watch)}
+                  className="shadow-md"
+                >
+                  {t('tryon.title')}
+                </Button>
+              </div>
+
+              {watch.images.length > 1 && (
                 <>
-                  <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10 hidden sm:block">
-                    <IconButton
-                      label="Previous photo"
-                      icon={<ChevronLeft className="w-4 h-4 text-[#221F1B]" />}
-                      onClick={prevImage}
-                      variant="secondary"
-                      size="sm"
-                    />
-                  </div>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 hidden sm:block">
-                    <IconButton
-                      label="Next photo"
-                      icon={<ChevronRight className="w-4 h-4 text-[#221F1B]" />}
-                      onClick={nextImage}
-                      variant="secondary"
-                      size="sm"
-                    />
-                  </div>
-                  <div className="absolute bottom-3 right-3 z-10 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white tracking-wider pointer-events-none">
-                    {activeImageIndex + 1} / {totalImages}
-                  </div>
+                  <button
+                    onClick={() => scrollToImage(Math.max(0, activePhotoIndex - 1))}
+                    disabled={activePhotoIndex === 0}
+                    aria-label={t('detail.previousImage')}
+                    className="absolute start-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/70 backdrop-blur border border-white/40 shadow-sm flex items-center justify-center text-[#221F1B] disabled:opacity-0 transition-opacity z-10"
+                  >
+                    <ArrowRight className="w-4 h-4 rotate-180" />
+                  </button>
+                  <button
+                    onClick={() => scrollToImage(Math.min(watch.images.length - 1, activePhotoIndex + 1))}
+                    disabled={activePhotoIndex === watch.images.length - 1}
+                    aria-label={t('detail.nextImage')}
+                    className="absolute end-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/70 backdrop-blur border border-white/40 shadow-sm flex items-center justify-center text-[#221F1B] disabled:opacity-0 transition-opacity z-10"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
                 </>
               )}
             </div>
 
-            {/* Mobile Slide Dots */}
-            {totalImages > 1 && (
-              <div className="flex justify-center items-center gap-1.5 mb-3 sm:hidden">
-                {watch.images.map((_, idx) => (
+            {watch.images.length > 1 && (
+              <div className="mt-3 px-3 sm:px-0 flex gap-2 overflow-x-auto snap-x pb-2 scrollbar-none w-full max-w-full">
+                {watch.images.map((src, i) => (
                   <button
-                    key={idx}
-                    type="button"
-                    onClick={() => goToIndex(idx)}
-                    aria-label={`Go to photo ${idx + 1}`}
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      activeImageIndex === idx ? 'w-6 bg-[#B8934A]' : 'w-2 bg-[#E8E2D5]'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Thumbnail Selector */}
-            {totalImages > 1 && (
-              <div className="flex items-center justify-center gap-2.5 flex-wrap">
-                {watch.images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      goToIndex(idx);
-                    }}
-                    aria-label={'View photo ' + (idx + 1)}
-                    className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all cursor-pointer touch-manipulation ${
-                      activeImageIndex === idx
-                        ? 'border-[#B8934A] ring-2 ring-[#B8934A]/30 edge-shadow-soft scale-105'
-                        : 'border-[#E8E2D5] opacity-60 hover:opacity-100'
+                    key={i}
+                    onClick={() => scrollToImage(i)}
+                    className={`relative w-16 sm:w-20 aspect-square rounded-lg overflow-hidden shrink-0 snap-start transition-all ${
+                      i === activePhotoIndex
+                        ? 'ring-2 ring-[#B8934A] ring-offset-1 ring-offset-[#FCFBF9]'
+                        : 'opacity-60 hover:opacity-100'
                     }`}
                   >
                     <img
-                      src={img}
-                      alt=""
-                      className="w-full h-full object-cover pointer-events-none"
+                      src={src}
+                      alt={`Thumbnail ${i + 1}`}
                       referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        if (watch.imageFallbacks[idx] && e.currentTarget.src !== watch.imageFallbacks[idx]) {
-                          e.currentTarget.src = watch.imageFallbacks[idx];
-                        }
-                      }}
+                      onError={(e) => handleImageError(i, e)}
+                      className="w-full h-full object-cover"
                     />
                   </button>
                 ))}
               </div>
             )}
-          </motion.div>
-
-          {/* Right Column: Title, Price & Order Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className="flex flex-col justify-center space-y-6"
-          >
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-xs text-[#8C8275]">{watch.referenceNumber}</span>
-                <span className="text-[10px] uppercase font-semibold text-[#B8934A] tracking-wider">
-                  {watch.subCollection}
-                </span>
+            
+            {hasMultipleGenders && (
+              <div className="mt-4 px-3 sm:px-0">
+                <div className="surface-card p-3 flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-wider text-[#8C8275] font-semibold flex-1">
+                    {'Available in'}
+                  </span>
+                  <div className="flex bg-[#F5F2EC] rounded-full p-0.5 border border-[#E8E2D5]">
+                    {allListings.map(listing => (
+                      <button
+                        key={listing.id}
+                        disabled={listing.category === parentGrid}
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                          listing.category === parentGrid
+                            ? 'bg-white text-[#B8934A] shadow-xs cursor-default'
+                            : 'text-[#8C8275] hover:text-[#221F1B]'
+                        }`}
+                      >
+                        {listing.category === 'men' ? t('cat.menTitle') : t('cat.womenTitle')}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="w-full text-[9px] text-[#8C8275] mt-1 italic">
+                    {'Return to Collections'}
+                  </div>
+                </div>
               </div>
-              <h1 className="font-serif-luxury text-3xl sm:text-4xl font-light text-[#221F1B] leading-tight mb-2">
-                {watch.name}
-              </h1>
+            )}
+          </div>
 
-              {/* Price */}
-              <div className="text-2xl sm:text-3xl font-serif-luxury font-normal text-[#221F1B]">
-                {watch.formattedPrice}
+          {/* 
+            Right column: Product info 
+          */}
+          <div className="w-full lg:w-[45%] shrink-0 px-4 sm:px-0 mt-6 lg:mt-0 flex flex-col max-w-full">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-mono tracking-wider text-[#8C8275] force-ltr">
+                {watch.referenceNumber}
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.2em] font-semibold text-[#B8934A]">
+                {translatedSubCollection}
+              </span>
+            </div>
+
+            <h1 className="font-serif-luxury text-3xl sm:text-4xl text-[#221F1B] font-light leading-tight">
+              {watch.name}
+            </h1>
+            
+            <p className="text-sm text-[#736B60] mt-3 leading-relaxed">
+              {watch.shortDescription}
+            </p>
+
+            <div className="mt-5 pb-5 border-b border-[#E8E2D5] flex items-end justify-between">
+              <div className="font-serif-luxury text-3xl text-[#221F1B] font-semibold force-ltr inline-block">
+                {formattedPriceVal}
               </div>
-
-              {/* Selected Photo Indicator */}
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#F0EAE0]">
-                <span className="text-xs uppercase font-semibold text-[#B8934A] bg-[#FAF5EB] px-3 py-1 rounded-full border border-[#E5DBCA]">
-                  Watch Photo #{activeImageIndex + 1}
-                </span>
-                <span className="text-[11px] text-[#8C8275]">Selected variation sent in order</span>
+              <div className="text-[11px] text-[#B8934A] font-semibold uppercase tracking-wider bg-[#B8934A]/10 px-2.5 py-1 rounded-full">
+                {watch.inStock ? t('detail.inStock') : 'Out of Stock'}
               </div>
             </div>
 
-            {/* Main Action Buttons */}
-            <div className="space-y-3 pt-2">
+            <div className="py-5 border-b border-[#E8E2D5] space-y-4">
+              {/* Personalization Options */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => setWantsEngraving(!wantsEngraving)}
+                  className="flex items-center justify-between w-full group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${wantsEngraving ? 'bg-[#B8934A] border-[#B8934A]' : 'border-[#D8CBB5] group-hover:border-[#B8934A]'}`}>
+                      {wantsEngraving && <Check className="w-2.5 h-2.5 text-white" />}
+                    </div>
+                    <PenTool className="w-4 h-4 text-[#8C8275]" />
+                    <span className="text-sm text-[#221F1B] font-medium">{t('detail.engravingTitle')}</span>
+                  </div>
+                  <span className="text-[10px] uppercase font-bold text-[#B8934A] tracking-wider">{'Free'}</span>
+                </button>
+                <AnimatePresence>
+                  {wantsEngraving && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <input
+                        type="text"
+                        placeholder={t('detail.engravingPlaceholder')}
+                        value={engravingText}
+                        onChange={(e) => setEngravingText(e.target.value)}
+                        maxLength={20}
+                        className="w-full bg-white border border-[#E8E2D5] focus:border-[#B8934A] rounded-xl p-2.5 text-sm text-[#221F1B] outline-none ms-6 w-[calc(100%-24px)]"
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <button
+                  onClick={() => setWantsGiftWrap(!wantsGiftWrap)}
+                  className="flex items-center justify-between w-full group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${wantsGiftWrap ? 'bg-[#B8934A] border-[#B8934A]' : 'border-[#D8CBB5] group-hover:border-[#B8934A]'}`}>
+                      {wantsGiftWrap && <Check className="w-2.5 h-2.5 text-white" />}
+                    </div>
+                    <Box className="w-4 h-4 text-[#8C8275]" />
+                    <span className="text-sm text-[#221F1B] font-medium">{'Gift Box'}</span>
+                  </div>
+                  <span className="text-[10px] uppercase font-bold text-[#B8934A] tracking-wider">{'Free'}</span>
+                </button>
+              </div>
+
+              {/* Quantity */}
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-sm text-[#221F1B] font-medium">{'Quantity'}</span>
+                <div className="flex items-center bg-white border border-[#E8E2D5] rounded-full overflow-hidden force-ltr">
+                  <button 
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={quantity <= 1}
+                    className="w-8 h-8 flex items-center justify-center text-[#8C8275] hover:bg-[#F5F2EC] disabled:opacity-30 transition-colors"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-8 text-center text-sm font-semibold">{quantity}</span>
+                  <button 
+                    onClick={() => setQuantity(Math.min(5, quantity + 1))}
+                    disabled={quantity >= 5}
+                    className="w-8 h-8 flex items-center justify-center text-[#8C8275] hover:bg-[#F5F2EC] disabled:opacity-30 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="py-5 flex flex-col gap-3">
               <Button
                 variant="primary"
                 size="lg"
                 block
-                icon={<ShoppingBag className="w-4 h-4" />}
-                onClick={handleAcquire}
-                className="touch-manipulation"
+                disabled={!watch.inStock}
+                onClick={() => {
+                  for (let i = 0; i < quantity; i++) {
+                    onAddToCart(watch, wantsEngraving ? engravingText : undefined, wantsGiftWrap, activePhotoIndex + 1);
+                  }
+                }}
               >
-                Acquire ({watch.formattedPrice})
+                {t('detail.acquire', { price: '' })}
               </Button>
-
               <Button
-                variant={isWishlisted ? 'gold' : 'secondary'}
+                variant="whatsapp"
                 size="lg"
                 block
-                icon={<Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current text-[#B8934A]' : ''}`} />}
-                onClick={() => onToggleWishlist(watch)}
-                className="touch-manipulation"
+                icon={<MessageSquare className="w-4 h-4 fill-white" />}
+                onClick={handleDirectWhatsApp}
               >
-                {isWishlisted ? 'In Wishes' : 'Add to Wishes'}
+                {(() => {
+                  const text = t('detail.orderWhatsApp');
+                  const parts = text.split('0652297244');
+                  if (parts.length > 1) {
+                    return (
+                      <>
+                        {parts[0]}
+                        <bdi className="force-ltr">0652297244</bdi>
+                        {parts[1]}
+                      </>
+                    );
+                  }
+                  return text;
+                })()}
               </Button>
             </div>
 
-            {/* Description */}
-            <div className="pt-4 border-t border-[#F0EAE0] space-y-2 text-xs text-[#736B60] leading-relaxed">
-              <p>{watch.description || watch.shortDescription}</p>
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="surface-card p-3 flex items-center gap-2 text-[10px] text-[#736B60] font-medium leading-tight">
+                <Shield className="w-4 h-4 text-[#B8934A] shrink-0" />
+                <span>{t('detail.guarantee')}</span>
+              </div>
+              <div className="surface-card p-3 flex items-center gap-2 text-[10px] text-[#736B60] font-medium leading-tight">
+                <RotateCcw className="w-4 h-4 text-[#B8934A] shrink-0" />
+                <span>{'Exchange available'}</span>
+              </div>
+              <div className="surface-card p-3 flex items-center gap-2 text-[10px] text-[#736B60] font-medium leading-tight">
+                <CreditCard className="w-4 h-4 text-[#B8934A] shrink-0" />
+                <span>{t('common.cashOnDelivery')}</span>
+              </div>
+              <button 
+                onClick={() => onOpenConcierge(watch, activePhotoIndex + 1)}
+                className="surface-card p-3 flex items-center gap-2 text-[10px] text-[#B8934A] font-bold leading-tight hover:ring-1 hover:ring-[#B8934A]/30 transition-all text-start"
+              >
+                <MessageSquare className="w-4 h-4 shrink-0" />
+                <span>{t('detail.specialistHelp')}</span>
+              </button>
             </div>
-          </motion.div>
 
+            {hasVideo && <MovementVideo type={watch.specs.movement as 'chrono' | 'auto'} isRtl={isRtl} />}
+
+            {/* Specifications Accordion */}
+            <div className="mt-6 border-t border-[#E8E2D5]">
+              <button
+                onClick={() => setShowSpecs(!showSpecs)}
+                className="flex items-center justify-between w-full py-4 text-start group cursor-pointer"
+              >
+                <span className="font-serif-luxury text-lg text-[#221F1B] group-hover:text-[#B8934A] transition-colors">{t('detail.specsTitle')}</span>
+                <ChevronDown className={`w-5 h-5 text-[#8C8275] transition-transform duration-300 ${showSpecs ? 'rotate-180' : ''}`} />
+              </button>
+              
+              <AnimatePresence>
+                {showSpecs && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pb-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                      <div className="flex justify-between border-b border-[#F5F2EC] pb-2">
+                        <span className="text-[#8C8275]">{t('detail.caseMaterial')}</span>
+                        <span className="text-[#221F1B] font-medium text-end">{translatedMaterial}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-[#F5F2EC] pb-2">
+                        <span className="text-[#8C8275]">{t('detail.diameter')}</span>
+                        <span className="text-[#221F1B] font-medium force-ltr text-end">{formattedDiameter}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-[#F5F2EC] pb-2">
+                        <span className="text-[#8C8275]">{'Thickness'}</span>
+                        <span className="text-[#221F1B] font-medium force-ltr text-end">{formattedThickness}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-[#F5F2EC] pb-2">
+                        <span className="text-[#8C8275]">{t('detail.movement')}</span>
+                        <span className="text-[#221F1B] font-medium text-end">{translatedMovement}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-[#F5F2EC] pb-2">
+                        <span className="text-[#8C8275]">{t('detail.strapMaterial')}</span>
+                        <span className="text-[#221F1B] font-medium text-end">{translatedStrap}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-[#F5F2EC] pb-2">
+                        <span className="text-[#8C8275]">{t('detail.glass')}</span>
+                        <span className="text-[#221F1B] font-medium text-end">{translatedGlass}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-[#F5F2EC] pb-2">
+                        <span className="text-[#8C8275]">{t('detail.waterResistance')}</span>
+                        <span className="text-[#221F1B] font-medium text-end">{tData('waterResistance', watch.specs.waterResistance)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-[#F5F2EC] pb-2">
+                        <span className="text-[#8C8275]">{t('detail.buckle')}</span>
+                        <span className="text-[#221F1B] font-medium text-end">{translatedBuckle}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="mt-8 p-5 bg-[#F5F2EC] rounded-2xl relative overflow-hidden">
+              <Sparkles className="absolute -top-3 -end-3 w-16 h-16 text-[#E8E2D5] opacity-50 pointer-events-none" />
+              <h3 className="font-serif-luxury text-lg text-[#221F1B] mb-2">{t('detail.storyTitle')}</h3>
+              <p className="text-sm text-[#736B60] leading-relaxed mb-4">
+                {watch.fullDescription}
+              </p>
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-[#B8934A]">
+                {watch.storySnippet}
+              </div>
+            </div>
+
+            {watch.disclaimer && (
+              <div className="mt-4 text-[10px] text-[#8C8275] leading-relaxed italic border-s-2 border-[#D8CBB5] ps-3">
+                {t('tryon.disclaimer')}
+              </div>
+            )}
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 };

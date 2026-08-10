@@ -1,8 +1,9 @@
 import React from 'react';
-import { Heart, Trash2, ShoppingBag } from 'lucide-react';
+import { Heart, X, ShoppingBag } from 'lucide-react';
 import { Watch, Category } from '../types';
-import { ModalShell } from './ui/ModalShell';
+import { DrawerShell } from './ui/ModalShell';
 import { Button, IconButton } from './ui/Button';
+import { useI18n } from '../i18n';
 
 interface WishlistDrawerProps {
   isOpen: boolean;
@@ -23,46 +24,45 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
   onAddToCart,
   onSelectCategory,
 }) => {
-  const itemCountLabel = `${wishlistedWatches.length} piece${wishlistedWatches.length === 1 ? '' : 's'}`;
+  const { t, tData, formatPrice } = useI18n();
 
   return (
-    <ModalShell
+    <DrawerShell
       open={isOpen}
       onClose={onClose}
-      layout="drawer"
-      title="Saved Wishlist"
-      subtitle={itemCountLabel}
+      title={t('wish.title')}
+      subtitle={t('wish.piecesCount', { count: wishlistedWatches.length })}
       icon={<Heart className="w-5 h-5 text-[#B8934A]" />}
     >
-      <div className="p-4 sm:p-6 font-sans">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 font-sans">
         {wishlistedWatches.length === 0 ? (
-          <div className="text-center py-16 space-y-4">
-            <Heart className="w-12 h-12 text-[#D8CBB5] mx-auto" />
-            <div>
-              <h3 className="font-serif-luxury text-xl text-[#221F1B]">Your wishlist is empty</h3>
-              <p className="text-xs text-[#736B60] mt-1">Save your favorite timepieces while exploring.</p>
+          <div className="h-full flex flex-col items-center justify-center text-center space-y-4 pb-20">
+            <div className="w-16 h-16 rounded-full bg-[#F5F2EC] flex items-center justify-center mb-2">
+              <Heart className="w-6 h-6 text-[#D8CBB5]" />
             </div>
-            <div className="flex justify-center gap-3 pt-2">
-              <Button variant="primary" size="sm" onClick={() => { onClose(); onSelectCategory('men'); }}>
-                Men's Collection
+            <h3 className="font-serif-luxury text-xl text-[#221F1B]">{t('wish.emptyTitle')}</h3>
+            <p className="text-sm text-[#8C8275] max-w-[200px]">{t('wish.emptyBody')}</p>
+            <div className="pt-4 grid grid-cols-2 gap-3 w-full">
+              <Button variant="secondary" onClick={() => { onSelectCategory('men'); onClose(); }}>
+                {t('cart.menButton')}
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => { onClose(); onSelectCategory('women'); }}>
-                Women's Collection
+              <Button variant="secondary" onClick={() => { onSelectCategory('women'); onClose(); }}>
+                {t('cart.womenButton')}
               </Button>
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-6">
             {wishlistedWatches.map((watch) => (
               <div
                 key={watch.id}
+                className="surface-card p-3 relative flex gap-3 sm:gap-4 cursor-pointer hover:border-[#B8934A] transition-colors"
                 onClick={() => {
                   onSelectWatch(watch);
                   onClose();
                 }}
-                className="surface-card p-3 flex gap-4 items-center cursor-pointer hover:border-[#B8934A] transition-all"
               >
-                <div className="w-16 h-16 rounded-xl overflow-hidden img-frame photo-drop shrink-0">
+                <div className="w-20 sm:w-24 aspect-[3/4] rounded-lg overflow-hidden img-frame photo-drop shrink-0 bg-[#F5F2EC]">
                   <img
                     src={watch.images[0]}
                     alt={watch.name}
@@ -76,40 +76,49 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
                   />
                 </div>
 
-                <div className="flex-1 min-w-0 space-y-0.5">
-                  <span className="font-mono text-[10px] text-[#8C8275]">{watch.referenceNumber}</span>
-                  <h4 className="font-serif-luxury text-base text-[#221F1B] truncate">{watch.name}</h4>
-                  <div className="text-sm font-serif-luxury font-semibold text-[#221F1B]">
-                    {watch.formattedPrice}
+                <div className="flex-1 flex flex-col justify-between py-1 min-w-0">
+                  <div className="pe-6">
+                    <span className="font-mono text-[9px] text-[#8C8275] force-ltr">{watch.referenceNumber}</span>
+                    <h4 className="font-serif-luxury text-sm sm:text-base text-[#221F1B] truncate mt-0.5">{watch.name}</h4>
+                    <p className="text-[10px] text-[#8C8275] mt-0.5 truncate">{watch.brand} · {tData('subCollection', watch.subCollection)}</p>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="font-serif-luxury text-sm font-semibold text-[#221F1B] force-ltr">
+                      {formatPrice(watch.price)}
+                    </div>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="px-2.5 py-1 text-[10px]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddToCart(watch);
+                      }}
+                    >
+                      <ShoppingBag className="w-3 h-3 sm:me-1.5" />
+                      <span className="hidden sm:inline">{t('common.acquire')}</span>
+                    </Button>
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="absolute top-2 end-2">
                   <IconButton
-                    label="Remove from wishlist"
-                    icon={<Trash2 className="w-4 h-4 text-[#A33A2B]" />}
-                    onClick={() => onRemoveWishlist(watch)}
+                    label={t('cart.removeItem')}
+                    icon={<X className="w-3.5 h-3.5" />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveWishlist(watch);
+                    }}
                     variant="ghost"
                     size="sm"
                   />
-
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    icon={<ShoppingBag className="w-3.5 h-3.5" />}
-                    onClick={() => {
-                      onAddToCart(watch);
-                      onClose();
-                    }}
-                  >
-                    Acquire
-                  </Button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
-    </ModalShell>
+    </DrawerShell>
   );
 };

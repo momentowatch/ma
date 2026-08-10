@@ -1,11 +1,49 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Category } from '../types';
+import type { TranslationKey } from '../i18n';
 
 /** Every screen the shopper can stand on. */
 export type Route =
   | { name: 'gate' }
   | { name: 'category'; category: Category }
   | { name: 'watch'; category: Category; watchId: string; watchName: string };
+
+/**
+ * NOTE ON TYPE SAFETY.
+ *
+ * This alias looks like it constrains the value to a known translation key,
+ * but it does not: TranslationKey is a union of string literals, every literal
+ * is assignable to string, so TypeScript reduces `TranslationKey | string` to
+ * plain `string`. Before Round 6 that silently allowed eight nav.* keys that
+ * no dictionary defined, and the shopper saw the raw key `nav.womenShort` in
+ * the UI.
+ *
+ * The alias is kept because the value genuinely is "either a key or a proper
+ * noun such as a watch name". The real guarantee now comes from
+ * NAV_TITLE_KEYS below plus tests/nav-keys.test.ts.
+ */
+export type RouteTitleResult = TranslationKey | string;
+
+/**
+ * Every nav.* key routeTitle() and routeTitleShort() can return.
+ *
+ * The assertion beneath it is load-bearing: if any of these stops existing in
+ * src/i18n/locales/*.ts, this file stops compiling and `npm run lint` fails.
+ */
+export const NAV_TITLE_KEYS = [
+  'nav.gate',
+  'nav.gateShort',
+  'nav.all',
+  'nav.allShort',
+  'nav.men',
+  'nav.menShort',
+  'nav.women',
+  'nav.womenShort',
+  'nav.watchShort',
+] as const;
+
+const assertNavKeysResolve: readonly TranslationKey[] = NAV_TITLE_KEYS;
+void assertNavKeysResolve;
 
 export interface AppNavigation {
   /** Current screen. */
@@ -15,10 +53,10 @@ export interface AppNavigation {
   /** The screen Back will return to, if any. */
   previous: Route | null;
   canGoBack: boolean;
-  /** Ready-made label, e.g. "Back to Men's Collection". */
-  backLabel: string;
-  /** Short label for narrow screens, e.g. "Men's". */
-  backLabelShort: string;
+  /** Key or proper noun for the back target label. */
+  backTargetKey: RouteTitleResult | null;
+  /** Key for short label for narrow screens. */
+  backTargetShortKey: RouteTitleResult | null;
   push: (route: Route) => void;
   replace: (route: Route) => void;
   back: () => void;
@@ -33,22 +71,22 @@ export function routeKey(route: Route): string {
   return 'watch:' + route.category + ':' + route.watchId;
 }
 
-export function routeTitle(route: Route): string {
-  if (route.name === 'gate') return 'Collection Selection';
+export function routeTitle(route: Route): RouteTitleResult {
+  if (route.name === 'gate') return 'nav.gate';
   if (route.name === 'category') {
-    if (route.category === 'all') return 'All Timepieces';
-    return route.category === 'men' ? "Men's Collection" : "Women's Collection";
+    if (route.category === 'all') return 'nav.all';
+    return route.category === 'men' ? 'nav.men' : 'nav.women';
   }
   return route.watchName;
 }
 
-export function routeTitleShort(route: Route): string {
-  if (route.name === 'gate') return 'Selection';
+export function routeTitleShort(route: Route): RouteTitleResult {
+  if (route.name === 'gate') return 'nav.gateShort';
   if (route.name === 'category') {
-    if (route.category === 'all') return 'All';
-    return route.category === 'men' ? "Men's" : "Women's";
+    if (route.category === 'all') return 'nav.allShort';
+    return route.category === 'men' ? 'nav.menShort' : 'nav.womenShort';
   }
-  return 'Watch';
+  return 'nav.watchShort';
 }
 
 interface Options {
@@ -70,11 +108,11 @@ export function useAppNavigation(options: Options = {}): AppNavigation {
 
   const back = useCallback(() => {
     if (interceptRef.current && interceptRef.current()) return; // an overlay ate it
-    setStack(prev => (prev.length > 1 ? prev.slice(0, -1) : prev));
+    setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   }, []);
 
   const push = useCallback((next: Route) => {
-    setStack(prev => {
+    setStack((prev) => {
       const top = prev[prev.length - 1];
       if (routeKey(top) === routeKey(next)) return prev;
       return [...prev, next];
@@ -82,7 +120,7 @@ export function useAppNavigation(options: Options = {}): AppNavigation {
   }, []);
 
   const replace = useCallback((next: Route) => {
-    setStack(prev => [...prev.slice(0, -1), next]);
+    setStack((prev) => [...prev.slice(0, -1), next]);
   }, []);
 
   const resetToGate = useCallback(() => {
@@ -91,10 +129,6 @@ export function useAppNavigation(options: Options = {}): AppNavigation {
 
   /**
    * Hardware / browser Back support without a router.
-   * We keep one disposable "trap" entry in front of the real entry. When the
-   * shopper presses Back the trap is consumed, we run our own back(), then we
-   * push a fresh trap. Once we are on the gate with nothing to close we do not
-   * re-arm, so a second Back genuinely leaves the site.
    */
   useEffect(() => {
     window.history.replaceState({ momento: 'root' }, '');
@@ -108,7 +142,7 @@ export function useAppNavigation(options: Options = {}): AppNavigation {
         return;
       }
       if (canPop) {
-        setStack(prev => (prev.length > 1 ? prev.slice(0, -1) : prev));
+        setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
         window.history.pushState({ momento: 'trap' }, '');
       }
       // else: at the gate with nothing open -> allow the browser to leave.
@@ -118,7 +152,7 @@ export function useAppNavigation(options: Options = {}): AppNavigation {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // Scroll to the top on every route change; it is a new page for the shopper.
+  // Scroll to the top on every route change.
   const route = stack[stack.length - 1];
   const routeK = routeKey(route);
   useEffect(() => {
@@ -127,16 +161,19 @@ export function useAppNavigation(options: Options = {}): AppNavigation {
 
   const previous = stack.length > 1 ? stack[stack.length - 2] : null;
 
-  return useMemo<AppNavigation>(() => ({
-    route,
-    stack,
-    previous,
-    canGoBack: stack.length > 1,
-    backLabel: previous ? 'Back to ' + routeTitle(previous) : 'Back',
-    backLabelShort: previous ? routeTitleShort(previous) : 'Back',
-    push,
-    replace,
-    back,
-    resetToGate,
-  }), [route, stack, previous, push, replace, back, resetToGate]);
+  return useMemo<AppNavigation>(
+    () => ({
+      route,
+      stack,
+      previous,
+      canGoBack: stack.length > 1,
+      backTargetKey: previous ? routeTitle(previous) : null,
+      backTargetShortKey: previous ? routeTitleShort(previous) : null,
+      push,
+      replace,
+      back,
+      resetToGate,
+    }),
+    [route, stack, previous, push, replace, back, resetToGate],
+  );
 }

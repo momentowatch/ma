@@ -1,19 +1,181 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>MOMENTO | Casa Watch Boutique</title>
-    <meta name="description" content="Casa Watch Casablanca — men's and women's watches from 175 dh. Delivery across Morocco.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-    <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io" crossorigin>
-    <link rel="preload" as="image" type="image/webp" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/men.webp" fetchpriority="high">
-    <link rel="preload" as="image" type="image/webp" href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/women.webp" fetchpriority="high">
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Google tag (gtag.js) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- =====================================================================
+         Locale bootstrap. Runs before first paint so an Arabic visitor never
+         sees an LTR frame. Mirrors src/i18n/detect.ts exactly: URL override,
+         then a stored choice, then the device language list, then English.
+         Keep the supported-locale list and the storage key identical to
+         src/i18n/config.ts. This is intentional duplication, not dead code.
+         ================================================================== -->
+    <script>
+      (function () {
+        try {
+          var SUPPORTED = ['en', 'fr', 'ar'];
+          var KEY = 'momento.locale';
+          var primary = function (tag) {
+            return String(tag || '').toLowerCase().split('-')[0].split('_')[0];
+          };
+          var pick = function () {
+            var q = new URLSearchParams(window.location.search).get('lang');
+            if (q && SUPPORTED.indexOf(primary(q)) > -1) return primary(q);
+            var saved = window.localStorage.getItem(KEY);
+            if (saved && SUPPORTED.indexOf(saved) > -1) return saved;
+            var tags = (navigator.languages && navigator.languages.length)
+              ? navigator.languages
+              : [navigator.language];
+            for (var i = 0; i < tags.length; i++) {
+              var p = primary(tags[i]);
+              if (SUPPORTED.indexOf(p) > -1) return p;
+            }
+            return 'en';
+          };
+          var locale = pick();
+          var root = document.documentElement;
+          root.lang = locale === 'ar' ? 'ar-MA' : locale === 'fr' ? 'fr-MA' : 'en';
+          root.dir = locale === 'ar' ? 'rtl' : 'ltr';
+          root.setAttribute('data-locale', locale);
+        } catch (e) {
+          /* never block the render on locale detection */
+        }
+      })();
+    </script>
+
+    <!-- ===================== Primary document metadata ===================== -->
+    <title>MOMENTO | Casa Watch Boutique — Watches in Casablanca, Morocco</title>
+    <meta
+      name="description"
+      content="MOMENTO — Casa Watch Boutique, Casablanca. Men's and women's watches from 130 dhs. Real in-store photos, cash on delivery across Morocco."
+    />
+    <meta name="author" content="MOMENTO · Casa Watch Boutique" />
+    <meta name="theme-color" content="#FCFBF9" />
+    <meta name="color-scheme" content="light" />
+    <link rel="canonical" href="%VITE_SITE_URL%" />
+
+    <!-- ===================== Icons and installability ====================== -->
+    <link rel="icon" href="%BASE_URL%favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="%BASE_URL%favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="%BASE_URL%favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%BASE_URL%apple-touch-icon.png" />
+    <link rel="manifest" href="%BASE_URL%site.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="MOMENTO" />
+    <meta name="application-name" content="MOMENTO" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <!-- ===================== Open Graph (Facebook, WhatsApp, LinkedIn,
+         Telegram, Slack, Discord, iMessage) ================================ -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="MOMENTO · Casa Watch Boutique" />
+    <meta property="og:title" content="MOMENTO | Casa Watch Boutique — Watches in Casablanca" />
+    <meta
+      property="og:description"
+      content="Men's and women's watches from 130 dhs. Real in-store photos, cash on delivery across Morocco. Casablanca."
+    />
+    <meta property="og:url" content="%VITE_SITE_URL%" />
+
+    <!-- Primary share image: JPEG, exactly 1200x630, served from our own
+         origin. JPEG first on purpose — WhatsApp, the highest-value channel
+         for this boutique, is unreliable with WebP unfurls. -->
+    <meta property="og:image" content="%VITE_SITE_URL%og/og-image.jpg" />
+    <meta property="og:image:secure_url" content="%VITE_SITE_URL%og/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="MOMENTO — Casa Watch Boutique, Casablanca" />
+
+    <!-- Secondary: the same 1200x630 frame as a WebP, for consumers that
+         prefer it. The dimensions below are not a guess: every build runs
+         scripts/fetch-brand-assets.mjs, which refuses to continue unless this
+         file is exactly 1200x630. -->
+    <meta property="og:image" content="%VITE_SITE_URL%og/og-image.webp" />
+    <meta property="og:image:type" content="image/webp" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:locale:alternate" content="ar_MA" />
+
+    <!-- ===================== X / Twitter card ============================== -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MOMENTO | Casa Watch Boutique — Watches in Casablanca" />
+    <meta
+      name="twitter:description"
+      content="Men's and women's watches from 130 dhs. Real in-store photos, cash on delivery across Morocco."
+    />
+    <meta name="twitter:image" content="%VITE_SITE_URL%og/og-image.jpg" />
+    <meta name="twitter:image:alt" content="MOMENTO — Casa Watch Boutique, Casablanca" />
+
+    <!-- ===================== Language alternates =========================== -->
+    <link rel="alternate" hreflang="en" href="%VITE_SITE_URL%?lang=en" />
+    <link rel="alternate" hreflang="fr" href="%VITE_SITE_URL%?lang=fr" />
+    <link rel="alternate" hreflang="ar" href="%VITE_SITE_URL%?lang=ar" />
+    <link rel="alternate" hreflang="x-default" href="%VITE_SITE_URL%" />
+
+    <!-- ===================== Resource hints (unchanged) ==================== -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://noureddinelmobaraki-web.github.io" crossorigin />
+    <link
+      rel="preload"
+      as="image"
+      type="image/webp"
+      href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/men.webp"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="image"
+      type="image/webp"
+      href="https://noureddinelmobaraki-web.github.io/nl-audio-cdn/women.webp"
+      fetchpriority="high"
+    />
+
+    <!-- ===================== Typography ==================================== -->
+    <!-- Latin: unchanged -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Arabic: Amiri = serif display counterpart to Cormorant Garamond,
+         IBM Plex Sans Arabic = UI counterpart to Plus Jakarta Sans.
+         unicode-range subsetting means Latin-only visitors download neither. -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- ===================== Structured data =============================== -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Store",
+        "name": "MOMENTO · Casa Watch Boutique",
+        "alternateName": "MOMENTO",
+        "description": "Men's and women's watches from 130 dhs. Real in-store photos, cash on delivery across Morocco.",
+        "image": "https://momentowatch.github.io/ma/og/og-image.jpg",
+        "url": "%VITE_SITE_URL%",
+        "priceRange": "130\u2013330 MAD",
+        "currenciesAccepted": "MAD",
+        "paymentAccepted": "Cash on delivery",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Casablanca",
+          "addressCountry": "MA"
+        },
+        "areaServed": { "@type": "Country", "name": "Morocco" },
+        "availableLanguage": ["en", "fr", "ar"],
+        "telephone": "+212652297244",
+        "sameAs": ["https://wa.me/212652297244"]
+      }
+    </script>
+    
+    <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-JRJRJ40KLR"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -23,7 +185,9 @@
       gtag('config', 'G-JRJRJ40KLR');
     </script>
   </head>
-  <body class="bg-[#FCFBF9] text-[#221F1B] antialiased selection:bg-[#F2E8D5] selection:text-[#221F1B]">
+  <body
+    class="bg-[#FCFBF9] text-[#221F1B] antialiased selection:bg-[#F2E8D5] selection:text-[#221F1B]"
+  >
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

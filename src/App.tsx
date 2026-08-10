@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Category, Watch, CartItem } from './types';
 import { ALL_WATCHES, MEN_WATCHES, WOMEN_WATCHES, getWatchById } from './data/watches';
-import { useAppNavigation, Route } from './navigation/useAppNavigation';
+import { useAppNavigation, Route, NAV_TITLE_KEYS } from './navigation/useAppNavigation';
 import { ZoomTransitionProvider, useZoomTransition } from './components/transitions/ZoomTransition';
 import { GenderGate } from './components/GenderGate';
 import { Header } from './components/Header';
@@ -12,9 +12,11 @@ import { WishlistDrawer } from './components/WishlistDrawer';
 import { SearchModal } from './components/SearchModal';
 import { TryOnModal } from './components/TryOnModal';
 import { ConciergeModal } from './components/ConciergeModal';
+import { useI18n } from './i18n';
 
 function AppShell() {
   const { zoom } = useZoomTransition();
+  const { t } = useI18n();
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
@@ -45,6 +47,26 @@ function AppShell() {
 
   const nav = useAppNavigation({ interceptBack: closeTopOverlay });
   const route = nav.route;
+
+  // A back target is either a nav.* dictionary key or a proper noun (a watch
+  // name), which must never be translated. isNavKey narrows the first case to
+  // the exact union of keys the navigation layer is allowed to emit, so a
+  // missing or misspelled key is now a compile error rather than raw text
+  // rendered to the shopper.
+  const isNavKey = (value: string): value is (typeof NAV_TITLE_KEYS)[number] =>
+    (NAV_TITLE_KEYS as readonly string[]).includes(value);
+
+  const computedBackLabel = nav.backTargetKey
+    ? (isNavKey(nav.backTargetKey)
+        ? t('common.backTo', { target: t(nav.backTargetKey) })
+        : t('common.backTo', { target: nav.backTargetKey }))
+    : t('common.back');
+
+  const computedBackLabelShort = nav.backTargetShortKey
+    ? (isNavKey(nav.backTargetShortKey)
+        ? t(nav.backTargetShortKey)
+        : nav.backTargetShortKey)
+    : t('common.back');
 
   const allWatchesById = useMemo(() => {
     const map = new Map<string, Watch>();
@@ -166,8 +188,8 @@ function AppShell() {
         onSelectCategory={handleSwitchCategory}
         onReturnToGate={nav.resetToGate}
         canGoBack={nav.canGoBack}
-        backLabel={nav.backLabel}
-        backLabelShort={nav.backLabelShort}
+        backLabel={computedBackLabel}
+        backLabelShort={computedBackLabelShort}
         onBack={nav.back}
         cartCount={cartItems.reduce((total, item) => total + item.quantity, 0)}
         wishlistCount={wishlistIds.length}
@@ -182,8 +204,8 @@ function AppShell() {
           <WatchDetailPage
             watch={activeWatch}
             onBack={nav.back}
-            backLabel={nav.backLabel}
-            backLabelShort={nav.backLabelShort}
+            backLabel={computedBackLabel}
+            backLabelShort={computedBackLabelShort}
             isWishlisted={wishlistIds.includes(activeWatch.id)}
             onToggleWishlist={handleToggleWishlist}
             onAddToCart={handleAddToCart}
