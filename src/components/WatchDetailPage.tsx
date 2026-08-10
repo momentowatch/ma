@@ -620,7 +620,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
 
             {/* Description */}
             <div className="pt-4 border-t border-[#F0EAE0] space-y-2 text-xs text-[#736B60] leading-relaxed">
-              <p>{watch.fullDescription || watch.shortDescription}</p>
+              <p>{watch.description || watch.shortDescription}</p>
             </div>
           </motion.div>
 
