@@ -2,12 +2,11 @@
 ### <sub>متجر ساعات فاخرة — الدار البيضاء، المغرب</sub>
 
 [![Deploy](https://github.com/monentowatch/ma/actions/workflows/deploy.yml/badge.svg)](https://github.com/monentowatch/ma/actions/workflows/deploy.yml)
-[![CodeQL](https://github.com/monentowatch/ma/actions/workflows/codeql.yml/badge.svg)](https://github.com/monentowatch/ma/actions/workflows/codeql.yml)
 ![License](https://img.shields.io/badge/license-UNLICENSED-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)
 
-- **الموقع المباشر:** https://monentowatch.github.io/ma/
-- **المستودع:** https://github.com/monentowatch/ma
+**الموقع المباشر:** https://momentowatch.github.io/ma/
+**المستودع:** https://github.com/monentowatch/ma
 
 ## 🗺️ المحتويات
 - [الميزات](#-الميزات)
@@ -16,7 +15,6 @@
 - [البدء السريع](#-البدء-السريع)
 - [الأوامر](#-الأوامر)
 - [الاختبارات](#-الاختبارات)
-- [مسار القاعدة](#-مسار-القاعدة-base)
 - [النشر](#-النشر)
 - [معمارية الصور (CDN)](#-معمارية-الصور-cdn)
 - [الرخصة](#-الرخصة)
@@ -37,7 +35,7 @@
 
 ## ⚡ البدء السريع
 ```bash
-npm ci
+npm install
 npm run dev
 ```
 
@@ -53,23 +51,8 @@ npm run dev
 ## 🧪 الاختبارات
 استخدم `npm test` للتحقق من سلامة الكتالوج، وتمنع هذه الاختبارات تسرب أسعار خارج المدى المسموح وتكرار المعرّفات للمنتجات. تستخدم اختبارات E2E إطار عمل Playwright.
 
-## 📍 مسار القاعدة (`base`)
-هذا موقع مشروع على GitHub Pages، لذلك يُقدَّم من مسار فرعي يطابق اسم المستودع:
-
-| القيمة | |
-| --- | --- |
-| اسم المستودع | `ma` |
-| `base` | `/ma/` |
-| الرابط | `https://monentowatch.github.io/ma/` |
-
-القيمة `/ma/` تظهر في أربعة ملفات يجب أن تبقى متطابقة دائماً: `vite.config.ts`، `deploy.yml`، `quality.yml`، `playwright.config.ts`. التفاصيل في `DEPLOYMENT.md`.
-
 ## 🚀 النشر
 يتم نشر الموقع تلقائياً إلى GitHub Pages عند الدفع إلى الفرع `main`.
-
-**خطوة يدوية إجبارية مرة واحدة:** `Settings ← Pages ← Build and deployment ← Source = GitHub Actions`. بدونها يفشل النشر بالخطأ `Get Pages site failed`.
-
-لا يحتاج هذا المشروع أي سر (secret).
 
 ## 🖼️ معمارية الصور (CDN)
 كل الصور تأتي من مستودع `nl-audio-cdn` عبر jsDelivr مع احتياطي raw.githubusercontent. **لا صورة تُحزم مع الموقع**. لذلك، أي صورة مفقودة تُصلَح في مستودع الـ CDN وليس هنا.

@@ -41,6 +41,20 @@
   background: #B8934A;
 }
 
+/* Hide scrollbars for containers marked with scrollbar-none or no-scrollbar */
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.scrollbar-none,
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
 @keyframes goldShimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -151,6 +165,19 @@
 
 /* Free-standing product shot (transparent-ish WebP on sand) */
 .photo-drop img { filter: drop-shadow(0 18px 22px rgba(34, 31, 27, 0.20)); }
+
+/* iOS compositing guard -----------------------------------------------------
+   filter: drop-shadow() establishes a stacking context and forces the element
+   into its own offscreen buffer. Inside the horizontally scrolling gallery
+   that means WebKit re-composites up to nine buffers on every frame of a
+   swipe, which is the most expensive thing that can be done to the scrolling
+   thread.
+
+   The frame itself (.img-frame) already carries --edge-hairline, --shadow-soft
+   and an inset ::after edge, so the per-image shadow adds almost nothing
+   visually here while costing a great deal. Scoped off inside the track only;
+   every other use of .photo-drop is untouched. */
+.photo-drop [data-carousel-track] img { filter: none; }
 
 /* --- Button system -------------------------------------------------------- */
 .btn {
@@ -350,4 +377,82 @@
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* =========================================================================
+   Arabic typography and right-to-left corrections
+   ---------------------------------------------------------------------
+   Shipped to everyone but only active under html[lang="ar"] / [dir="rtl"].
+   The Arabic webfonts are unicode-range subsetted by Google Fonts, so a
+   Latin-only visitor downloads none of their glyph data.
+   ====================================================================== */
+
+:root {
+  /* Amiri is a naskh serif — the closest Arabic voice to Cormorant Garamond.
+     IBM Plex Sans Arabic mirrors Plus Jakarta Sans for UI text. Both are
+     already linked in index.html; do not add a second font request. */
+  --font-arabic-display: 'Amiri', 'Noto Naskh Arabic', Georgia, serif;
+  --font-arabic-sans: 'IBM Plex Sans Arabic', 'Noto Kufi Arabic', system-ui, sans-serif;
+}
+
+html[lang^='ar'] body {
+  font-family: var(--font-arabic-sans);
+  /* Arabic needs more leading than Latin: taller ascenders and descenders,
+     plus diacritics that sit outside the x-height band. */
+  line-height: 1.85;
+}
+
+html[lang^='ar'] h1,
+html[lang^='ar'] h2,
+html[lang^='ar'] h3,
+html[lang^='ar'] h4,
+html[lang^='ar'] .font-serif-luxury {
+  font-family: var(--font-arabic-display);
+}
+
+html[lang^='ar'] input,
+html[lang^='ar'] textarea,
+html[lang^='ar'] select,
+html[lang^='ar'] button {
+  font-family: var(--font-arabic-sans);
+}
+
+/* CRITICAL — cursive-script protection.
+   Positive tracking severs the joins between Arabic letters. This codebase
+   applies tracking from .btn, from another shared rule, and from 18 inline
+   tracking-[…] utilities, so the neutralisation must be broad enough to beat
+   utility specificity. This is the one place !important is correct. */
+html[lang^='ar'] body,
+html[lang^='ar'] body * {
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+}
+
+/* uppercase is a no-op for Arabic script but still costs a paint and can
+   confuse shapers. Hairline weights are unreadable in Arabic. */
+html[lang^='ar'] .btn {
+  text-transform: none;
+  font-weight: 500;
+}
+
+/* Latin-direction runs inside Arabic text: phone numbers, prices, watch
+   references, SKUs. Add className="force-ltr" to any element rendering one. */
+.force-ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* The drawer shadow is painted on the panel's open edge, which is the left
+   edge in LTR and the right edge in RTL, so the X offsets invert.
+   COPY the blur radii, spread and colours from the existing .drawer-shell
+   rule above and change ONLY the sign of the X offsets. */
+[dir='rtl'] .drawer-shell {
+  box-shadow:
+    1px 0 0 var(--edge-hairline),
+    18px 0 40px -12px rgba(34, 31, 27, 0.18);
+}
+
+/* Cosmetic: let the poster sheen sweep with the reading direction. */
+[dir='rtl'] .poster-sheen::before {
+  transform: scaleX(-1);
 }

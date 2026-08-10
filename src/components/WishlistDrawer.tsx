@@ -3,6 +3,7 @@ import { Heart, Trash2, ShoppingBag } from 'lucide-react';
 import { Watch, Category } from '../types';
 import { ModalShell } from './ui/ModalShell';
 import { Button, IconButton } from './ui/Button';
+import { useI18n } from '../i18n';
 
 interface WishlistDrawerProps {
   isOpen: boolean;
@@ -23,14 +24,16 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
   onAddToCart,
   onSelectCategory,
 }) => {
-  const itemCountLabel = `${wishlistedWatches.length} piece${wishlistedWatches.length === 1 ? '' : 's'}`;
+  const { t, formatPrice } = useI18n();
+
+  const itemCountLabel = t('wish.piecesCount', { count: wishlistedWatches.length });
 
   return (
     <ModalShell
       open={isOpen}
       onClose={onClose}
       layout="drawer"
-      title="Saved Wishlist"
+      title={t('wish.title')}
       subtitle={itemCountLabel}
       icon={<Heart className="w-5 h-5 text-[#B8934A]" />}
     >
@@ -39,15 +42,15 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
           <div className="text-center py-16 space-y-4">
             <Heart className="w-12 h-12 text-[#D8CBB5] mx-auto" />
             <div>
-              <h3 className="font-serif-luxury text-xl text-[#221F1B]">Your wishlist is empty</h3>
-              <p className="text-xs text-[#736B60] mt-1">Save your favorite timepieces while exploring.</p>
+              <h3 className="font-serif-luxury text-xl text-[#221F1B]">{t('wish.emptyTitle')}</h3>
+              <p className="text-xs text-[#736B60] mt-1">{t('wish.emptyBody')}</p>
             </div>
             <div className="flex justify-center gap-3 pt-2">
               <Button variant="primary" size="sm" onClick={() => { onClose(); onSelectCategory('men'); }}>
-                Men's Collection
+                {t('cart.menButton')}
               </Button>
               <Button variant="secondary" size="sm" onClick={() => { onClose(); onSelectCategory('women'); }}>
-                Women's Collection
+                {t('cart.womenButton')}
               </Button>
             </div>
           </div>
@@ -80,13 +83,13 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
                   <span className="font-mono text-[10px] text-[#8C8275]">{watch.referenceNumber}</span>
                   <h4 className="font-serif-luxury text-base text-[#221F1B] truncate">{watch.name}</h4>
                   <div className="text-sm font-serif-luxury font-semibold text-[#221F1B]">
-                    {watch.formattedPrice}
+                    {formatPrice(watch.price)}
                   </div>
                 </div>
 
                 <div className="flex flex-col items-end gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <IconButton
-                    label="Remove from wishlist"
+                    label={t('card.removeFromWishlist')}
                     icon={<Trash2 className="w-4 h-4 text-[#A33A2B]" />}
                     onClick={() => onRemoveWishlist(watch)}
                     variant="ghost"
@@ -102,7 +105,7 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
                       onClose();
                     }}
                   >
-                    Acquire
+                    {t('common.acquire')}
                   </Button>
                 </div>
               </div>

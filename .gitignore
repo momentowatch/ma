@@ -4,5 +4,23 @@ dist/
 coverage/
 .DS_Store
 *.log
-.env*
+!.env
+!.env.production
 !.env.example
+
+# Brand assets are fetched at build time by scripts/fetch-brand-assets.mjs.
+# They are deliberately NOT committed: a text-mode write corrupts binaries.
+public/favicon.ico
+public/favicon-16x16.png
+public/favicon-32x32.png
+public/apple-touch-icon.png
+public/icon-192.png
+public/icon-512.png
+public/icon-maskable-512.png
+public/og/
+
+# Playwright artefacts
+playwright-report/
+test-results/
+blob-report/
+.playwright/

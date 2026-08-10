@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: quality-momento-${{ github.ref }}
+  group: quality-ma-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -31,3 +31,4 @@ jobs:
         run: npm run build
         env:
           VITE_BASE_PATH: /ma/
+          VITE_SITE_URL: https://momentowatch.github.io/ma/

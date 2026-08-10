@@ -6,8 +6,9 @@ import {
 } from 'lucide-react';
 import { Watch, Category, ViewMode, FilterOptions } from '../types';
 import { WatchCard } from './WatchCard';
-import { SUB_COLLECTIONS_MEN, SUB_COLLECTIONS_WOMEN, SUB_COLLECTIONS_ALL, BRAND_STORY, BRANDS_MEN, BRANDS_WOMEN, BRANDS_ALL, PRICE_BOUNDS } from '../data/watches';
+import { SUB_COLLECTIONS_MEN, SUB_COLLECTIONS_WOMEN, SUB_COLLECTIONS_ALL, BRANDS_MEN, BRANDS_WOMEN, BRANDS_ALL, PRICE_BOUNDS } from '../data/watches';
 import { Button, IconButton } from './ui/Button';
+import { useI18n } from '../i18n';
 
 interface CategoryPageProps {
   category: Category;
@@ -29,6 +30,7 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
   onAddToCart,
   onOpenConcierge
 }) => {
+  const { t, tData, isRtl } = useI18n();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [showCategorySection, setShowCategorySection] = useState(true);
@@ -87,13 +89,15 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
 
   const slideLeft = () => {
     if (brandSliderRef.current) {
-      brandSliderRef.current.scrollBy({ left: -320, behavior: 'smooth' });
+      const dir = isRtl ? 320 : -320;
+      brandSliderRef.current.scrollBy({ left: dir, behavior: 'smooth' });
     }
   };
 
   const slideRight = () => {
     if (brandSliderRef.current) {
-      brandSliderRef.current.scrollBy({ left: 320, behavior: 'smooth' });
+      const dir = isRtl ? -320 : 320;
+      brandSliderRef.current.scrollBy({ left: dir, behavior: 'smooth' });
     }
   };
 
@@ -187,11 +191,18 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
     };
   });
 
+  const categoryTitle =
+    category === 'all'
+      ? t('cat.allTitle')
+      : category === 'men'
+        ? t('cat.menTitle')
+        : t('cat.womenTitle');
+
   return (
     <div className="min-h-screen bg-[#FCFBF9] text-[#221F1B] pb-10 relative overflow-x-hidden w-full font-sans">
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[10%] -right-20 w-[300px] h-[300px] bg-[#F5E6D3] rounded-full blur-[100px] opacity-30" />
-        <div className="absolute bottom-[10%] -left-20 w-[300px] h-[300px] bg-[#EAE7DC] rounded-full blur-[100px] opacity-25" />
+        <div className="absolute top-[10%] end-[-20px] w-[300px] h-[300px] bg-[#F5E6D3] rounded-full blur-[100px] opacity-30" />
+        <div className="absolute bottom-[10%] start-[-20px] w-[300px] h-[300px] bg-[#EAE7DC] rounded-full blur-[100px] opacity-25" />
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-1 sm:pt-2 relative z-10 w-full overflow-x-hidden">
@@ -207,11 +218,11 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
             >
               <div className="flex items-center justify-between mb-3 px-2">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#B8934A] block text-left">
-                    {category === 'all' ? "Complete Watch Collection" : category === 'men' ? "Men's Collections" : "Women's Collections"}
+                  <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#B8934A] block text-start">
+                    {categoryTitle}
                   </span>
-                  <h2 className="font-serif-luxury text-xl sm:text-2xl text-[#221F1B] font-light text-left">
-                    Featured Brands
+                  <h2 className="font-serif-luxury text-xl sm:text-2xl text-[#221F1B] font-light text-start">
+                    {t('cat.featuredBrands')}
                   </h2>
                 </div>
 
@@ -223,19 +234,19 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-[#B8934A] bg-[#B8934A]/10 hover:bg-[#B8934A]/20 border border-[#B8934A]/20 rounded-full transition-all cursor-pointer"
                     >
                       <ChevronUp className="w-3 h-3 text-[#B8934A]" />
-                      <span>Hide Categories</span>
+                      <span>{t('cat.hideCategories')}</span>
                     </button>
                   )}
                   <IconButton
                     label="Scroll collections left"
-                    icon={<ChevronLeft className="w-4 h-4" />}
+                    icon={<ChevronLeft className="w-4 h-4 rtl:rotate-180" />}
                     onClick={slideLeft}
                     variant="secondary"
                     size="sm"
                   />
                   <IconButton
                     label="Scroll collections right"
-                    icon={<ChevronRight className="w-4 h-4" />}
+                    icon={<ChevronRight className="w-4 h-4 rtl:rotate-180" />}
                     onClick={slideRight}
                     variant="secondary"
                     size="sm"
@@ -265,7 +276,7 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
                           ? 'https://i.postimg.cc/QC7gc5Cq/Gana-dinero-en-Internet-en-andigarcia-com-Got-watches.jpg'
                           : 'https://i.postimg.cc/fyd7YXy5/3b0ef66fdf01daf620925ea5967d14db.jpg'
                       }
-                      alt="Full Collection"
+                      alt={t('cat.allProducts')}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
@@ -275,12 +286,14 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
                     <span className={`font-serif-luxury text-base sm:text-lg font-light tracking-[0.12em] transition-colors block ${
                       filters.brand === 'All' && showAllProducts ? 'text-[#B8934A] font-normal' : 'text-[#221F1B] group-hover:text-[#B8934A]'
                     }`}>
-                      All Products
+                      {t('cat.allProducts')}
                     </span>
 
-                    <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-[#B8934A] uppercase tracking-wider group-hover:translate-x-0.5 transition-transform">
-                      <span>{filters.brand === 'All' && showAllProducts ? 'Selected' : 'See All'} ({watches.length})</span>
-                      <ArrowRight className="w-3 h-3" />
+                    <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-[#B8934A] uppercase tracking-wider group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform">
+                      <span>
+                        {filters.brand === 'All' && showAllProducts ? t('cat.selected') : t('cat.seeAll')} ({watches.length})
+                      </span>
+                      <ArrowRight className="w-3 h-3 rtl:rotate-180" />
                     </div>
                   </div>
                 </button>
@@ -317,9 +330,9 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
                           {b.label}
                         </span>
 
-                        <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-[#B8934A] uppercase tracking-wider group-hover:translate-x-0.5 transition-transform">
-                          <span>{isSelected ? 'Selected' : 'View Brand'} ({b.count})</span>
-                          <ArrowRight className="w-3 h-3" />
+                        <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-[#B8934A] uppercase tracking-wider group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform">
+                          <span>{isSelected ? t('cat.selected') : t('cat.viewBrand')} ({b.count})</span>
+                          <ArrowRight className="w-3 h-3 rtl:rotate-180" />
                         </div>
                       </div>
                     </button>
@@ -333,9 +346,11 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
         {!showCategorySection && (filters.brand !== 'All' || showAllProducts) && (
           <div className="flex items-center justify-between flex-wrap gap-2.5 bg-white/95 backdrop-blur-sm border border-[#E8E2D5] rounded-xl px-3.5 py-2 mb-3 edge-shadow-soft max-w-5xl mx-auto">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-widest text-[#8C8275] font-semibold">Selected:</span>
+              <span className="text-[10px] uppercase tracking-widest text-[#8C8275] font-semibold">
+                {t('cat.selectedPrefix')}
+              </span>
               <span className="font-serif-luxury text-sm font-normal text-[#B8934A] uppercase tracking-wider">
-                {filters.brand === 'All' ? `All Products (${watches.length})` : filters.brand}
+                {filters.brand === 'All' ? `${t('cat.allProducts')} (${watches.length})` : filters.brand}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -345,7 +360,7 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
                 className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-[#B8934A] bg-[#B8934A]/10 hover:bg-[#B8934A]/20 border border-[#B8934A]/20 rounded-full transition-all cursor-pointer"
               >
                 <ChevronDown className="w-3 h-3 text-[#B8934A]" />
-                <span>Show Categories</span>
+                <span>{t('cat.showCategories')}</span>
               </button>
               <button
                 type="button"
@@ -357,268 +372,273 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
                 className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-[#736B60] bg-[#F5F2EC] hover:bg-[#E8E2D5] border border-[#E8E2D5] rounded-full transition-all cursor-pointer"
               >
                 <X className="w-3 h-3 text-[#736B60]" />
-                <span>Clear</span>
+                <span>{t('cat.clear')}</span>
               </button>
             </div>
           </div>
         )}
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mb-3 font-sans">
-              <div className="relative flex-1 max-w-sm sm:max-w-md">
-                <Search className="w-3.5 h-3.5 text-[#8C8275] absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder={`Search ${filters.brand === 'All' ? '' : filters.brand} timepieces...`}
-                  value={filters.search}
-                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  className="w-full bg-white/60 backdrop-blur-md border border-[#E5E1D8] focus:border-[#D4AF37] rounded-full pl-8 pr-8 py-1.5 text-[11px] text-[#221F1B] placeholder-[#8C8275] outline-none transition-all shadow-2xs"
-                />
-                {filters.search && (
-                  <IconButton
-                    label="Clear search"
-                    icon={<X className="w-3 h-3" />}
-                    onClick={() => setFilters({ ...filters, search: '' })}
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1/2 -translate-y-1/2"
-                  />
-                )}
-              </div>
+          <div className="relative flex-1 max-w-sm sm:max-w-md">
+            <Search className="w-3.5 h-3.5 text-[#8C8275] absolute start-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder={t('cat.searchPlaceholder', { brand: filters.brand === 'All' ? '' : filters.brand })}
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              className="w-full bg-white/60 backdrop-blur-md border border-[#E5E1D8] focus:border-[#D4AF37] rounded-full ps-8 pe-8 py-1.5 text-[11px] text-[#221F1B] placeholder-[#8C8275] outline-none transition-all shadow-2xs"
+            />
+            {filters.search && (
+              <IconButton
+                label={t('cat.clearSearch')}
+                icon={<X className="w-3 h-3" />}
+                onClick={() => setFilters({ ...filters, search: '' })}
+                variant="ghost"
+                size="sm"
+                className="absolute end-1 top-1/2 -translate-y-1/2"
+              />
+            )}
+          </div>
 
-              <div className="flex items-center justify-between sm:justify-end gap-1.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full transition-all cursor-pointer border ${
-                    showFilters || hasActiveFilters
-                      ? 'bg-[#B8934A]/10 text-[#B8934A] border-[#B8934A]/30'
-                      : 'bg-white/70 text-[#221F1B] border-[#E5E1D8] hover:border-[#B8934A]/40'
-                  }`}
-                >
-                  <SlidersHorizontal className="w-3 h-3 text-[#B8934A]" />
-                  <span>Filters</span>
-                  {activeFilterCount > 0 && (
-                    <span className="ml-0.5 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold bg-[#B8934A] text-white flex items-center justify-center">
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </button>
-
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    onClick={resetFilters}
-                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-[#736B60] bg-white/70 hover:bg-[#F5F2EC] border border-[#E5E1D8] rounded-full transition-all cursor-pointer"
-                  >
-                    <RotateCcw className="w-3 h-3 text-[#B8934A]" />
-                    <span>Reset</span>
-                  </button>
-                )}
-
-                <div className="relative">
-                  <select
-                    aria-label="Sort timepieces"
-                    value={filters.sortBy}
-                    onChange={(e) => setFilters({ ...filters, sortBy: e.target.value as any })}
-                    className="appearance-none bg-white/70 backdrop-blur-md border border-[#E5E1D8] hover:border-[#D4AF37] rounded-full px-2.5 py-1 pr-6 text-[11px] font-medium text-[#221F1B] outline-none cursor-pointer transition-all shadow-2xs"
-                  >
-                    <option value="featured">Sort: Featured</option>
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
-                    <option value="newest">New Releases</option>
-                  </select>
-                  <ChevronDown className="w-3 h-3 text-[#8C8275] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-
-                <div className="flex items-center bg-white/50 backdrop-blur-md p-0.5 rounded-full border border-[#E5E1D8]">
-                  <button
-                    type="button"
-                    aria-label="Grid view"
-                    onClick={() => handleViewModeChange('grid')}
-                    className={`p-1 rounded-full transition-colors cursor-pointer ${
-                      viewMode === 'grid' ? 'bg-[#B8934A] text-white' : 'text-[#8C8275] hover:text-[#221F1B]'
-                    }`}
-                  >
-                    <LayoutGrid className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="List view"
-                    onClick={() => handleViewModeChange('editorial')}
-                    className={`p-1 rounded-full transition-colors cursor-pointer ${
-                      viewMode === 'editorial' ? 'bg-[#B8934A] text-white' : 'text-[#8C8275] hover:text-[#221F1B]'
-                    }`}
-                  >
-                    <List className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <AnimatePresence>
-              {showFilters && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden mb-6"
-                >
-                  <div className="surface-card edge-shadow p-5 grid grid-cols-1 sm:grid-cols-4 gap-5 text-xs font-sans">
-                    <div>
-                      <label className="font-semibold text-[#221F1B] uppercase tracking-wider block mb-2">
-                        Case Material
-                      </label>
-                      <select
-                        value={filters.caseMaterial}
-                        onChange={(e) => setFilters({ ...filters, caseMaterial: e.target.value })}
-                        className="w-full bg-white/60 border border-[#E5E1D8] focus:border-[#D4AF37] rounded-xl p-2.5 outline-none text-[#221F1B]"
-                      >
-                        {availableMaterials.map((mat) => (
-                          <option key={mat} value={mat}>
-                            {mat}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="font-semibold text-[#221F1B] uppercase tracking-wider block mb-2">
-                        Collection Category
-                      </label>
-                      <select
-                        value={filters.subCollection}
-                        onChange={(e) => setFilters({ ...filters, subCollection: e.target.value as any })}
-                        className="w-full bg-white/60 border border-[#E5E1D8] focus:border-[#D4AF37] rounded-xl p-2.5 outline-none text-[#221F1B]"
-                      >
-                        {subCollections.map((sc) => (
-                          <option key={sc} value={sc}>
-                            {sc}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="col-span-1 sm:col-span-2 flex flex-col justify-between">
-                      <label className="font-semibold text-[#221F1B] uppercase tracking-wider block mb-2">
-                        Price Range ({PRICE_BOUNDS.min} dhs - {PRICE_BOUNDS.max} dhs)
-                      </label>
-                      <div className="flex items-center gap-3 flex-1 mt-1">
-                         <div className="flex flex-col w-full">
-                           <span className="text-[10px] text-[#8C8275] mb-1">Max Price: {filters.priceMax} dhs</span>
-                           <input 
-                              type="range" 
-                              min={PRICE_BOUNDS.min} 
-                              max={PRICE_BOUNDS.max} 
-                              step={5} 
-                              value={filters.priceMax}
-                              onChange={(e) => setFilters({...filters, priceMax: Number(e.target.value)})}
-                              className="w-full accent-[#B8934A]"
-                           />
-                         </div>
-                      </div>
-                      <div className="flex justify-end mt-2">
-                         <Button
-                           variant="secondary"
-                           size="sm"
-                           icon={<RotateCcw className="w-3.5 h-3.5 text-[#B8934A]" />}
-                           onClick={resetFilters}
-                         >
-                           Reset Filters
-                         </Button>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
+          <div className="flex items-center justify-between sm:justify-end gap-1.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full transition-all cursor-pointer border ${
+                showFilters || hasActiveFilters
+                  ? 'bg-[#B8934A]/10 text-[#B8934A] border-[#B8934A]/30'
+                  : 'bg-white/70 text-[#221F1B] border-[#E5E1D8] hover:border-[#B8934A]/40'
+              }`}
+            >
+              <SlidersHorizontal className="w-3 h-3 text-[#B8934A]" />
+              <span>{t('cat.filters')}</span>
+              {activeFilterCount > 0 && (
+                <span className="ms-0.5 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold bg-[#B8934A] text-white flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
               )}
-            </AnimatePresence>
+            </button>
 
             {hasActiveFilters && (
-              <div className="flex flex-wrap items-center gap-2 mb-6 text-xs">
-                <span className="text-[#8C8275] font-medium">Active Filters:</span>
-                {filters.subCollection !== 'All Collections' && (
-                  <span className="px-3 py-1 bg-[#FAF5EB] text-[#B8934A] border border-[#E5DBCA] rounded-full font-medium">
-                    {filters.subCollection}
-                  </span>
-                )}
-                {filters.caseMaterial !== 'All' && (
-                  <span className="px-3 py-1 bg-[#FAF5EB] text-[#B8934A] border border-[#E5DBCA] rounded-full font-medium">
-                    Material: {filters.caseMaterial}
-                  </span>
-                )}
-                {filters.priceMax < PRICE_BOUNDS.max && (
-                  <span className="px-3 py-1 bg-[#FAF5EB] text-[#B8934A] border border-[#E5DBCA] rounded-full font-medium">
-                    Up to {filters.priceMax} dhs
-                  </span>
-                )}
-                {filters.search && (
-                  <span className="px-3 py-1 bg-[#FAF5EB] text-[#B8934A] border border-[#E5DBCA] rounded-full font-medium">
-                    "{filters.search}"
-                  </span>
-                )}
-                <Button variant="ghost" size="sm" onClick={resetFilters}>
-                  Clear Filters
-                </Button>
-              </div>
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-[#736B60] bg-white/70 hover:bg-[#F5F2EC] border border-[#E5E1D8] rounded-full transition-all cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3 text-[#B8934A]" />
+                <span>{t('cat.reset')}</span>
+              </button>
             )}
 
-            <div ref={productListRef} className="flex items-center justify-between mb-4 text-xs text-[#8C8275]">
-              <span>
-                Showing <strong className="text-[#221F1B]">{filteredWatches.length}</strong> {filters.brand === 'All' ? 'timepieces' : `${filters.brand} timepieces`}
-              </span>
+            <div className="relative">
+              <select
+                aria-label={t('sort.label')}
+                value={filters.sortBy}
+                onChange={(e) => setFilters({ ...filters, sortBy: e.target.value as any })}
+                className="appearance-none bg-white/70 backdrop-blur-md border border-[#E5E1D8] hover:border-[#D4AF37] rounded-full ps-2.5 pe-6 py-1 text-[11px] font-medium text-[#221F1B] outline-none cursor-pointer transition-all shadow-2xs"
+              >
+                <option value="featured">{t('sort.featured')}</option>
+                <option value="price-asc">{t('sort.priceAsc')}</option>
+                <option value="price-desc">{t('sort.priceDesc')}</option>
+                <option value="newest">{t('sort.newest')}</option>
+              </select>
+              <ChevronDown className="w-3 h-3 text-[#8C8275] absolute end-2 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {filteredWatches.length > 0 ? (
-              <div className={`grid ${
-                viewMode === 'grid' 
-                  ? 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6' 
-                  : 'grid-cols-1 gap-4 sm:gap-6'
-              }`}>
-                {filteredWatches.map((watch, i) => (
-                  <WatchCard
-                    key={watch.id}
-                    watch={watch}
-                    viewMode={viewMode}
-                    isWishlisted={wishlistIds.includes(watch.id)}
-                    onToggleWishlist={onToggleWishlist}
-                    onSelectWatch={onSelectWatch}
-                    onAddToCart={onAddToCart}
-                    priority={i < 4}
-                  />
-                ))}
+            <div className="flex items-center bg-white/50 backdrop-blur-md p-0.5 rounded-full border border-[#E5E1D8]">
+              <button
+                type="button"
+                aria-label={t('cat.gridView')}
+                onClick={() => handleViewModeChange('grid')}
+                className={`p-1 rounded-full transition-colors cursor-pointer ${
+                  viewMode === 'grid' ? 'bg-[#B8934A] text-white' : 'text-[#8C8275] hover:text-[#221F1B]'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label={t('cat.listView')}
+                onClick={() => handleViewModeChange('editorial')}
+                className={`p-1 rounded-full transition-colors cursor-pointer ${
+                  viewMode === 'editorial' ? 'bg-[#B8934A] text-white' : 'text-[#8C8275] hover:text-[#221F1B]'
+                }`}
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden mb-6"
+            >
+              <div className="surface-card edge-shadow p-5 grid grid-cols-1 sm:grid-cols-4 gap-5 text-xs font-sans">
+                <div>
+                  <label className="font-semibold text-[#221F1B] uppercase tracking-wider block mb-2">
+                    {t('cat.caseMaterial')}
+                  </label>
+                  <select
+                    value={filters.caseMaterial}
+                    onChange={(e) => setFilters({ ...filters, caseMaterial: e.target.value })}
+                    className="w-full bg-white/60 border border-[#E5E1D8] focus:border-[#D4AF37] rounded-xl p-2.5 outline-none text-[#221F1B]"
+                  >
+                    {availableMaterials.map((mat) => (
+                      <option key={mat} value={mat}>
+                        {mat === 'All' ? t('cat.allMaterials') : tData('caseMaterial', mat)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-[#221F1B] uppercase tracking-wider block mb-2">
+                    {t('cat.collectionCategory')}
+                  </label>
+                  <select
+                    value={filters.subCollection}
+                    onChange={(e) => setFilters({ ...filters, subCollection: e.target.value as any })}
+                    className="w-full bg-white/60 border border-[#E5E1D8] focus:border-[#D4AF37] rounded-xl p-2.5 outline-none text-[#221F1B]"
+                  >
+                    {subCollections.map((sc) => (
+                      <option key={sc} value={sc}>
+                        {sc === 'All Collections' ? t('cat.allCollections') : tData('subCollection', sc)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-span-1 sm:col-span-2 flex flex-col justify-between">
+                  <label className="font-semibold text-[#221F1B] uppercase tracking-wider block mb-2">
+                    {t('cat.priceRange', { min: PRICE_BOUNDS.min, max: PRICE_BOUNDS.max })}
+                  </label>
+                  <div className="flex items-center gap-3 flex-1 mt-1">
+                    <div className="flex flex-col w-full">
+                      <span className="text-[10px] text-[#8C8275] mb-1">
+                        {t('cat.maxPrice', { price: filters.priceMax })}
+                      </span>
+                      <input 
+                        type="range" 
+                        min={PRICE_BOUNDS.min} 
+                        max={PRICE_BOUNDS.max} 
+                        step={5} 
+                        value={filters.priceMax}
+                        onChange={(e) => setFilters({...filters, priceMax: Number(e.target.value)})}
+                        className="w-full accent-[#B8934A]"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end mt-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<RotateCcw className="w-3.5 h-3.5 text-[#B8934A]" />}
+                      onClick={resetFilters}
+                    >
+                      {t('cat.reset')}
+                    </Button>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="text-center py-16 px-4 surface-card edge-shadow max-w-md mx-auto my-8">
-                <Search className="w-10 h-10 text-[#D8CBB5] mx-auto mb-3" />
-                <h3 className="font-serif-luxury text-xl text-[#221F1B]">No timepieces match your selection</h3>
-                <p className="text-xs text-[#736B60] mt-1 mb-5">
-                  Try resetting your search query or filter parameters to explore our collection.
-                </p>
-                <Button variant="primary" size="md" onClick={resetFilters}>
-                  Reset Filters
-                </Button>
-              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center gap-2 mb-6 text-xs">
+            <span className="text-[#8C8275] font-medium">{t('cat.activeFilters')}</span>
+            {filters.subCollection !== 'All Collections' && (
+              <span className="px-3 py-1 bg-[#FAF5EB] text-[#B8934A] border border-[#E5DBCA] rounded-full font-medium">
+                {tData('subCollection', filters.subCollection)}
+              </span>
             )}
+            {filters.caseMaterial !== 'All' && (
+              <span className="px-3 py-1 bg-[#FAF5EB] text-[#B8934A] border border-[#E5DBCA] rounded-full font-medium">
+                {t('cat.caseMaterial')}: {tData('caseMaterial', filters.caseMaterial)}
+              </span>
+            )}
+            {filters.priceMax < PRICE_BOUNDS.max && (
+              <span className="px-3 py-1 bg-[#FAF5EB] text-[#B8934A] border border-[#E5DBCA] rounded-full font-medium">
+                {t('cat.upTo', { price: filters.priceMax })}
+              </span>
+            )}
+            {filters.search && (
+              <span className="px-3 py-1 bg-[#FAF5EB] text-[#B8934A] border border-[#E5DBCA] rounded-full font-medium">
+                "{filters.search}"
+              </span>
+            )}
+            <Button variant="ghost" size="sm" onClick={resetFilters}>
+              {t('cat.clear')}
+            </Button>
+          </div>
+        )}
+
+        <div ref={productListRef} className="flex items-center justify-between mb-4 text-xs text-[#8C8275]">
+          <span>
+            {t('cat.showingCount', {
+              count: filteredWatches.length,
+              brand: filters.brand === 'All' ? t('cat.timepiecesAll') : t('cat.timepiecesBrand', { brand: filters.brand }),
+            })}
+          </span>
+        </div>
+
+        {filteredWatches.length > 0 ? (
+          <div className={`grid ${
+            viewMode === 'grid' 
+              ? 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6' 
+              : 'grid-cols-1 gap-4 sm:gap-6'
+          }`}>
+            {filteredWatches.map((watch, i) => (
+              <WatchCard
+                key={watch.id}
+                watch={watch}
+                viewMode={viewMode}
+                isWishlisted={wishlistIds.includes(watch.id)}
+                onToggleWishlist={onToggleWishlist}
+                onSelectWatch={onSelectWatch}
+                onAddToCart={onAddToCart}
+                priority={i < 4}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 px-4 surface-card edge-shadow max-w-md mx-auto my-8">
+            <Search className="w-10 h-10 text-[#D8CBB5] mx-auto mb-3" />
+            <h3 className="font-serif-luxury text-xl text-[#221F1B]">{t('cat.noMatchTitle')}</h3>
+            <p className="text-xs text-[#736B60] mt-1 mb-5">
+              {t('cat.noMatchBody')}
+            </p>
+            <Button variant="primary" size="md" onClick={resetFilters}>
+              {t('cat.reset')}
+            </Button>
+          </div>
+        )}
 
         <section className="mt-16 bg-white p-8 sm:p-12 rounded-3xl border border-[#E8E2D5] text-center relative overflow-hidden edge-shadow-soft">
           <div className="max-w-xl mx-auto relative z-10">
             <Sparkles className="w-5 h-5 text-[#B8934A] mx-auto mb-3" />
             <span className="text-[10px] uppercase tracking-[0.3em] text-[#B8934A] font-bold block mb-1">
-              Casa Watch
+              {t('cat.boutiqueSub')}
             </span>
             <h2 className="font-serif-luxury text-2xl sm:text-3xl font-light text-[#221F1B]">
-              Every Timepiece Tells A Story
+              {t('cat.storyTitle')}
             </h2>
             <p className="text-xs sm:text-sm text-[#736B60] mt-3 leading-relaxed">
-              {BRAND_STORY.craftsmanship}
+              {t('cat.storyCraftsmanship')}
             </p>
             <div className="mt-6 flex justify-center">
               <Button
                 variant="gold"
                 size="lg"
-                iconRight={<ArrowRight className="w-4 h-4" />}
+                iconRight={<ArrowRight className="w-4 h-4 rtl:rotate-180" />}
                 onClick={onOpenConcierge}
               >
-                Schedule Private Consultation
+                {t('cat.scheduleConsultation')}
               </Button>
             </div>
           </div>

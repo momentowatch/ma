@@ -115,7 +115,7 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
         
         {/* Gallery Section */}
         <div>
-          <div className="aspect-square img-frame photo-drop relative mb-3 overflow-hidden rounded-2xl group">
+          <div className="aspect-square img-frame photo-drop relative mb-3 overflow-hidden rounded-2xl group force-ltr" dir="ltr" style={{ direction: 'ltr' }}>
             {/* Slide-by-slide image container with touch swipe support */}
             <div
               ref={scrollContainerRef}
@@ -123,7 +123,8 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
               className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scroll-smooth touch-pan-x scrollbar-none"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              dir="ltr"
+              style={{ direction: 'ltr', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {watch.images.map((img, idx) => (
                 <div key={idx} className="w-full h-full flex-shrink-0 snap-center relative">
@@ -163,9 +164,6 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
                     variant="secondary"
                     size="sm"
                   />
-                </div>
-                <div className="absolute bottom-3 right-3 z-10 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white tracking-wider pointer-events-none">
-                  {activeImageIndex + 1} / {totalImages}
                 </div>
               </>
             )}

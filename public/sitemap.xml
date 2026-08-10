@@ -1,19 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
 
   <!--
-    MOMENTO is a single page application. src/hooks/useAppNavigation.ts calls
-    history.pushState without ever changing the address, so the catalogue,
-    the men's and women's collections and every watch detail view all live
-    at one single URL. Declaring invented paths such as /men, /women or
-    /watch/rolex-datejust would produce 404s in Search Console.
+    MOMENTO is a single page application. src/navigation/useAppNavigation.ts
+    calls history.pushState without ever changing the address, so the
+    catalogue, the men's and women's collections and every watch detail view
+    all live at one single URL. Declaring invented paths such as /men, /women
+    or /watch/rolex-datejust would produce 404s in Search Console.
+
+    The three xhtml:link entries below declare the language variants of that
+    single URL. The ?lang= parameter is read by the locale bootstrap in
+    index.html and by src/i18n/detect.ts.
 
     Product photography is hosted on cdn.jsdelivr.net, a third-party origin,
-    so no image entries are declared here.
+    so no <image:image> entries are declared here.
   -->
   <url>
-    <loc>https://monentowatch.github.io/ma/</loc>
-    <lastmod>2026-08-07</lastmod>
+    <loc>https://momentowatch.github.io/ma/</loc>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://momentowatch.github.io/ma/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://momentowatch.github.io/ma/?lang=en" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://momentowatch.github.io/ma/?lang=fr" />
+    <xhtml:link rel="alternate" hreflang="ar" href="https://momentowatch.github.io/ma/?lang=ar" />
+    <lastmod>2026-08-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>

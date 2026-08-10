@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ShoppingBag, Heart, Search } from 'lucide-react';
 import { Category } from '../types';
 import { IconButton } from './ui/Button';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useI18n } from '../i18n';
 
 interface HeaderProps {
   currentCategory: Category;
@@ -23,18 +25,14 @@ export const Header: React.FC<HeaderProps> = ({
   currentCategory,
   onSelectCategory,
   onReturnToGate,
-  canGoBack,
-  backLabel,
-  backLabelShort,
-  onBack,
   cartCount,
   wishlistCount,
   onOpenCart,
   onOpenWishlist,
   onOpenSearch,
-  onOpenConcierge,
 }) => {
   const [scrolled, setScrolled] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -51,15 +49,15 @@ export const Header: React.FC<HeaderProps> = ({
       }
     >
       <div className="max-w-7xl mx-auto px-2 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 relative">
-        {/* Left spacer for desktop absolute centering balance */}
-        <div className="hidden sm:block w-8 shrink-0" />
+        {/* Left slot: Desktop language switcher replacing the spacer */}
+        <LanguageSwitcher className="hidden sm:block shrink-0 z-10" />
 
         {/* Brand: Left on mobile, centered on laptop/desktop */}
         <button
           type="button"
           onClick={onReturnToGate}
-          aria-label="MOMENTO home — choose a collection"
-          className="group text-left sm:text-center px-1 py-1 rounded-xl transition-colors hover:bg-white/60 focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)] mr-auto sm:mr-0 sm:absolute sm:left-1/2 sm:-translate-x-1/2 z-10"
+          aria-label={t('header.home')}
+          className="group text-start sm:text-center px-1 py-1 rounded-xl transition-colors hover:bg-white/60 focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)] me-auto sm:me-0 sm:absolute sm:start-1/2 sm:-translate-x-1/2 z-10"
         >
           <span className="font-serif-luxury text-base sm:text-2xl font-light tracking-[0.18em] sm:tracking-[0.25em] uppercase text-[#221F1B] group-hover:text-[#B8934A] transition-colors leading-tight block">
             MOMENTO
@@ -69,17 +67,18 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </button>
 
-        {/* Right: actions, each one named */}
+        {/* Right: actions + mobile language switcher */}
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 z-10">
+          <LanguageSwitcher className="sm:hidden" />
           <IconButton
-            label="Search"
+            label={t('header.search')}
             icon={<Search className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
             onClick={onOpenSearch}
             variant="ghost"
             size="sm"
           />
           <IconButton
-            label="Wishlist"
+            label={t('header.wishlist')}
             icon={<Heart className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
             onClick={onOpenWishlist}
             variant="ghost"
@@ -88,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({
             badgeTone="gold"
           />
           <IconButton
-            label="Cart"
+            label={t('header.cart')}
             icon={<ShoppingBag className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
             onClick={onOpenCart}
             variant="primary"
@@ -98,14 +97,14 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Second row: the gender switch, now unmistakable */}
+      {/* Second row: the gender switch */}
       <div className="max-w-7xl mx-auto px-2 sm:px-6 pb-2 flex items-center justify-center">
         <div
           role="tablist"
-          aria-label="Collection"
+          aria-label={t('header.tabsLabel')}
           className="inline-flex items-center bg-white/70 backdrop-blur-md p-1 rounded-full border border-[#E5E1D8] shadow-[var(--shadow-soft)]"
         >
-          {(['all', 'men', 'women'] as Category[]).map(category => {
+          {(['all', 'men', 'women'] as Category[]).map((category) => {
             const active = currentCategory === category;
             return (
               <button
@@ -121,7 +120,11 @@ export const Header: React.FC<HeaderProps> = ({
                     : 'text-[#8C8275] hover:text-[#221F1B]')
                 }
               >
-                {category === 'all' ? 'All Collection' : category === 'men' ? "Men's" : "Women's"}
+                {category === 'all'
+                  ? t('header.tabAll')
+                  : category === 'men'
+                    ? t('header.tabMen')
+                    : t('header.tabWomen')}
               </button>
             );
           })}

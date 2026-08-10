@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { useI18n } from '../../i18n';
 
 export interface BackButtonProps {
   /** Full label, e.g. "Back to Men's Collection". */
@@ -14,8 +15,6 @@ export interface BackButtonProps {
 
 /**
  * The universal "previous screen" control.
- * It is rendered on every screen that has something behind it: the header,
- * the watch detail bar, and the header of every modal and drawer.
  */
 export const BackButton: React.FC<BackButtonProps> = ({
   label,
@@ -24,6 +23,7 @@ export const BackButton: React.FC<BackButtonProps> = ({
   tone = 'pill',
   className = '',
 }) => {
+  const { t } = useI18n();
   const toneClass =
     tone === 'bar' ? 'btn-ghost' : tone === 'ghost' ? 'btn-ghost text-white/90 hover:text-white' : 'btn-secondary';
 
@@ -36,9 +36,9 @@ export const BackButton: React.FC<BackButtonProps> = ({
       data-tip={label}
       className={['btn btn-sm has-tip group', toneClass, className].filter(Boolean).join(' ')}
     >
-      <ArrowLeft className="w-4 h-4 text-[#B8934A] transition-transform duration-300 group-hover:-translate-x-0.5" />
+      <ArrowLeft className="w-4 h-4 text-[#B8934A] transition-transform duration-300 group-hover:-translate-x-0.5 rtl:rotate-180 rtl:group-hover:translate-x-0.5" />
       <span className="hidden sm:inline">{label}</span>
-      <span className="sm:hidden">{shortLabel ?? 'Back'}</span>
+      <span className="sm:hidden">{shortLabel ?? t('common.back')}</span>
     </button>
   );
 };

@@ -6,6 +6,7 @@ import { shippingData, getShippingPrice } from '../data/shippingData';
 import { ShippingTariffsModal } from './ShippingTariffsModal';
 import { ModalShell } from './ui/ModalShell';
 import { Button, IconButton } from './ui/Button';
+import { useI18n } from '../i18n';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onSelectCategory,
   onClearCart,
 }) => {
+  const i18nBundle = useI18n();
+  const { t, tData } = i18nBundle;
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('Casablanca');
@@ -53,6 +56,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       return;
     }
     const msg = createMultiWatchWhatsAppMessage(
+      i18nBundle,
       cartItems.map(item => ({
         name: item.watch.name,
         price: item.watch.price,
@@ -66,23 +70,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       {
         fullName,
         phone,
-        city,
+        city: tData('city', city),
         address,
-        shippingFee,
-        includeBox,
       }
     );
     window.open(formatWhatsAppLink(msg), '_blank');
   };
 
-  const itemCountLabel = `${cartItems.length} item${cartItems.length === 1 ? '' : 's'}`;
+  const itemCountLabel = t('cart.itemsCount', { count: cartItems.length });
 
   return (
     <ModalShell
       open={isOpen}
       onClose={onClose}
       layout="drawer"
-      title="Shopping Cart"
+      title={t('cart.title')}
       subtitle={itemCountLabel}
       icon={<ShoppingBag className="w-5 h-5 text-[#B8934A]" />}
     >
@@ -91,15 +93,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           <div className="text-center py-16 space-y-4">
             <ShoppingBag className="w-12 h-12 text-[#D8CBB5] mx-auto" />
             <div>
-              <h3 className="font-serif-luxury text-xl text-[#221F1B]">Your cart is empty</h3>
-              <p className="text-xs text-[#736B60] mt-1">Discover our luxury timepieces collection.</p>
+              <h3 className="font-serif-luxury text-xl text-[#221F1B]">{t('cart.emptyTitle')}</h3>
+              <p className="text-xs text-[#736B60] mt-1">{t('cart.emptyBody')}</p>
             </div>
             <div className="flex justify-center gap-3 pt-2">
               <Button variant="primary" size="sm" onClick={() => { onClose(); onSelectCategory('men'); }}>
-                Men's Collection
+                {t('cart.menButton')}
               </Button>
               <Button variant="secondary" size="sm" onClick={() => { onClose(); onSelectCategory('women'); }}>
-                Women's Collection
+                {t('cart.womenButton')}
               </Button>
             </div>
           </div>

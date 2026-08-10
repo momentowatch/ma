@@ -5,6 +5,7 @@ import { Watch } from '../types';
 import { BackButton } from './ui/BackButton';
 import { Button, IconButton } from './ui/Button';
 import { createSingleWatchWhatsAppMessage, formatWhatsAppLink } from '../utils/whatsapp';
+import { useI18n } from '../i18n';
 
 /* ------------------------------------------------------------------------- *
  * Looping photo carousel tuning
@@ -61,6 +62,8 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
   onOpenTryOn,
   onOpenConcierge,
 }) => {
+  const i18nBundle = useI18n();
+  const { t, formatPrice } = i18nBundle;
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -411,6 +414,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
   const handleDirectWhatsApp = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     const msg = createSingleWatchWhatsAppMessage(
+      i18nBundle,
       watch.name,
       watch.price,
       watch.referenceNumber,
@@ -448,7 +452,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="aspect-square img-frame photo-drop relative mb-3 overflow-hidden rounded-2xl group">
+            <div className="aspect-square img-frame photo-drop relative mb-3 overflow-hidden rounded-2xl group force-ltr" dir="ltr" style={{ direction: 'ltr' }}>
               {/* Looping photo track driven by finger, mouse drag and trackpad */}
               <div
                 ref={viewportRef}
@@ -458,11 +462,14 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
                 onPointerCancel={handlePointerCancel}
                 onPointerLeave={handlePointerCancel}
                 className="w-full h-full overflow-hidden touch-pan-y select-none cursor-grab active:cursor-grabbing"
+                dir="ltr"
+                style={{ direction: 'ltr' }}
               >
                 <div
                   ref={trackRef}
                   className="flex w-full h-full will-change-transform"
-                  style={{ backfaceVisibility: 'hidden' }}
+                  dir="ltr"
+                  style={{ backfaceVisibility: 'hidden', direction: 'ltr' }}
                 >
                   {slides.map((slide, slideIdx) => (
                     <div key={slide.key} className="w-full h-full flex-shrink-0 relative">
@@ -505,9 +512,6 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
                       variant="secondary"
                       size="sm"
                     />
-                  </div>
-                  <div className="absolute bottom-3 right-3 z-10 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white tracking-wider pointer-events-none">
-                    {activeImageIndex + 1} / {totalImages}
                   </div>
                 </>
               )}
@@ -587,14 +591,6 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
               <div className="text-2xl sm:text-3xl font-serif-luxury font-normal text-[#221F1B]">
                 {watch.formattedPrice}
               </div>
-
-              {/* Selected Photo Indicator */}
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#F0EAE0]">
-                <span className="text-xs uppercase font-semibold text-[#B8934A] bg-[#FAF5EB] px-3 py-1 rounded-full border border-[#E5DBCA]">
-                  Watch Photo #{activeImageIndex + 1}
-                </span>
-                <span className="text-[11px] text-[#8C8275]">Selected variation sent in order</span>
-              </div>
             </div>
 
             {/* Main Action Buttons */}
@@ -607,7 +603,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
                 onClick={handleAcquire}
                 className="touch-manipulation"
               >
-                Acquire ({watch.formattedPrice})
+                {t('common.acquire')} ({formatPrice(watch.price)})
               </Button>
 
               <Button
@@ -618,7 +614,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
                 onClick={() => onToggleWishlist(watch)}
                 className="touch-manipulation"
               >
-                {isWishlisted ? 'In Wishes' : 'Add to Wishes'}
+                {isWishlisted ? t('detail.inWishes') : t('detail.addToWishes')}
               </Button>
             </div>
 

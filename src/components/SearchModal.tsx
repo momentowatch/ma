@@ -4,6 +4,7 @@ import { Watch, Category } from '../types';
 import { ALL_WATCHES } from '../data/watches';
 import { ModalShell } from './ui/ModalShell';
 import { Button, IconButton } from './ui/Button';
+import { useI18n } from '../i18n';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -16,8 +17,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   isOpen,
   onClose,
   onSelectWatch,
-  currentCategory
 }) => {
+  const { t, tData, formatPrice } = useI18n();
   const [query, setQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('All');
 
@@ -50,31 +51,31 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     <ModalShell
       open={isOpen}
       onClose={onClose}
-      title="Search Timepieces"
-      subtitle="Filter by model, reference, or brand"
+      title={t('search.title')}
+      subtitle={t('search.subtitle')}
       icon={<Search className="w-5 h-5 text-[#B8934A]" />}
       maxWidthClass="max-w-2xl"
     >
       <div className="p-4 sm:p-6 space-y-4 font-sans">
         {/* Search input */}
         <div className="relative">
-          <Search className="w-4 h-4 text-[#8C8275] absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#8C8275] absolute start-3.5 top-1/2 -translate-y-1/2" />
           <input
             data-autofocus
             type="text"
-            placeholder="Search by brand, reference code, or keyword..."
+            placeholder={t('search.placeholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-white border border-[#E8E2D5] focus:border-[#B8934A] rounded-2xl pl-10 pr-10 py-3 text-sm text-[#221F1B] placeholder-[#8C8275] outline-none transition-all shadow-xs"
+            className="w-full bg-white border border-[#E8E2D5] focus:border-[#B8934A] rounded-2xl ps-10 pe-10 py-3 text-sm text-[#221F1B] placeholder-[#8C8275] outline-none transition-all shadow-xs"
           />
           {query && (
             <IconButton
-              label="Clear search"
+              label={t('cat.clearSearch')}
               icon={<X className="w-4 h-4" />}
               onClick={() => setQuery('')}
               variant="ghost"
               size="sm"
-              className="absolute right-1 top-1/2 -translate-y-1/2"
+              className="absolute end-1 top-1/2 -translate-y-1/2"
             />
           )}
         </div>
@@ -88,7 +89,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
               size="sm"
               onClick={() => setSelectedBrand(b)}
             >
-              {b}
+              {b === 'All' ? t('cat.allProducts') : b}
             </Button>
           ))}
         </div>
@@ -121,21 +122,21 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 <div className="flex-1 min-w-0">
                   <span className="font-mono text-[10px] text-[#8C8275]">{watch.referenceNumber}</span>
                   <h4 className="font-serif-luxury text-base text-[#221F1B] truncate">{watch.name}</h4>
-                  <p className="text-[11px] text-[#8C8275]">{watch.brand} · {watch.subCollection}</p>
+                  <p className="text-[11px] text-[#8C8275]">{watch.brand} · {tData('subCollection', watch.subCollection)}</p>
                 </div>
-                <div className="text-right shrink-0">
-                  <span className="font-serif-luxury text-sm font-semibold text-[#221F1B]">{watch.formattedPrice}</span>
+                <div className="text-end shrink-0">
+                  <span className="font-serif-luxury text-sm font-semibold text-[#221F1B]">{formatPrice(watch.price)}</span>
                 </div>
               </div>
             ))
           ) : query || selectedBrand !== 'All' ? (
             <div className="text-center py-8 text-xs text-[#8C8275]">
-              No timepieces found matching your search criteria.
+              {t('search.noResults')}
             </div>
           ) : (
             <div className="text-center py-8 text-xs text-[#8C8275] flex flex-col items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#B8934A]" />
-              <span>Type a keyword or select a brand above to explore timepieces.</span>
+              <span>{t('search.prompt')}</span>
             </div>
           )}
         </div>

@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: e2e-monento-${{ github.ref }}
+  group: e2e-ma-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,6 +25,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report-monento
+          name: playwright-report-ma
           path: playwright-report/
           retention-days: 7

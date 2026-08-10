@@ -8,7 +8,6 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    // يجب أن يطابق base في vite.config.ts: /ma/
     baseURL: 'http://localhost:4173/ma/',
     trace: 'on-first-retry',
   },
@@ -17,7 +16,7 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['iPhone 13'] } },
   ],
   webServer: {
-    command: 'npm run build && npm run preview -- --port 4173 --strictPort',
+    command: 'NODE_ENV=production npm run build && npm run preview -- --port 4173 --strictPort',
     url: 'http://localhost:4173/ma/',
     reuseExistingServer: !process.env.CI,
     timeout: 300000,

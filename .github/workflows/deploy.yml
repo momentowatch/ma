@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-momento
+  group: pages-ma
   cancel-in-progress: false
 
 jobs:
@@ -39,13 +39,28 @@ jobs:
         run: npm run build
         env:
           VITE_BASE_PATH: /ma/
+          VITE_SITE_URL: https://momentowatch.github.io/ma/
 
-      # الحارس يقارن ناتج البناء الفعلي بالقيمة الكاملة src="/ma/assets/".
-      # لا تستعمل 'assets/' وحدها: فهي تطابق أي base وتجعل الحارس بلا قيمة.
       - name: Guard against wrong base path
         run: |
           grep -q 'src="/ma/assets/' dist/index.html \
-            || { echo "::error::dist/index.html لا يشير إلى /ma/ — قيمة base خاطئة"; exit 1; }
+            || { echo "::error::dist/index.html لا يشير إلى /ma/ — base خاطئ"; exit 1; }
+      - name: Verify social metadata in build output
+        run: |
+          set -euo pipefail
+          for needle in 'og:image' 'og:title' 'og:url' 'twitter:card' 'rel="canonical"' 'site.webmanifest'; do
+            grep -q "$needle" dist/index.html || { echo "::error::missing $needle in dist/index.html"; exit 1; }
+          done
+          grep -q 'content="${{ env.VITE_SITE_URL }}"' dist/index.html \
+            || { echo "::error::og:url does not match VITE_SITE_URL"; exit 1; }
+          grep -q '%VITE_SITE_URL%\|%BASE_URL%' dist/index.html \
+            && { echo "::error::unreplaced Vite HTML constant in dist/index.html"; exit 1; }
+          for f in favicon.ico site.webmanifest apple-touch-icon.png og/og-image.jpg; do
+            test -f "dist/$f" || { echo "::error::dist/$f missing"; exit 1; }
+          done
+
+      - name: Verify brand assets in build output
+        run: node scripts/fetch-brand-assets.mjs --verify-only --dir=dist
 
       - name: Verify SEO files reached dist
         run: |
@@ -56,14 +71,8 @@ jobs:
       - name: Add .nojekyll
         run: touch dist/.nojekyll
 
-      # enablement: true يحاول تفعيل GitHub Pages تلقائياً عبر واجهة GitHub
-      # إن لم يكن مفعّلاً. هذا هو علاج الخطأ:
-      #   "Get Pages site failed. Please verify that the repository has Pages enabled"
-      # وهو لا يُغني عن ضبط Settings ← Pages ← Source = GitHub Actions يدوياً.
       - name: Setup Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

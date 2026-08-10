@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowLeft } from 'lucide-react';
+import { useI18n } from '../../i18n';
 
 export interface ModalShellProps {
   open: boolean;
@@ -31,11 +32,14 @@ export const ModalShell: React.FC<ModalShellProps> = ({
   layout = 'center',
   maxWidthClass = 'max-w-lg',
   onBack,
-  backLabel = 'Back',
+  backLabel,
   footer,
   children,
 }) => {
+  const { isRtl, t } = useI18n();
   const panelRef = useRef<HTMLDivElement | null>(null);
+
+  const effectiveBackLabel = backLabel ?? t('common.back');
 
   // Escape closes, Tab stays inside.
   const onKeyDown = useCallback((event: KeyboardEvent) => {
@@ -101,14 +105,14 @@ export const ModalShell: React.FC<ModalShellProps> = ({
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            initial={isDrawer ? { x: '100%' } : { opacity: 0, y: 18, scale: 0.985 }}
+            initial={isDrawer ? { x: isRtl ? '-100%' : '100%' } : { opacity: 0, y: 18, scale: 0.985 }}
             animate={isDrawer ? { x: 0 } : { opacity: 1, y: 0, scale: 1 }}
-            exit={isDrawer ? { x: '100%' } : { opacity: 0, y: 12, scale: 0.99 }}
+            exit={isDrawer ? { x: isRtl ? '-100%' : '100%' } : { opacity: 0, y: 12, scale: 0.99 }}
             transition={{ type: 'spring', stiffness: 320, damping: 34, mass: 0.7 }}
             className={
               'relative bg-[#FCFBF9] flex flex-col overflow-x-hidden ' +
               (isDrawer
-                ? 'w-full max-w-md h-full drawer-shell border-l border-[#E8E2D5]'
+                ? 'w-full max-w-md h-full drawer-shell border-s border-[#E8E2D5]'
                 : 'w-full ' + maxWidthClass + ' modal-shell max-h-[92vh] my-auto')
             }
           >
@@ -118,12 +122,12 @@ export const ModalShell: React.FC<ModalShellProps> = ({
                 <button
                   type="button"
                   onClick={onBack}
-                  aria-label={backLabel}
-                  title={backLabel}
-                  data-tip={backLabel}
+                  aria-label={effectiveBackLabel}
+                  title={effectiveBackLabel}
+                  data-tip={effectiveBackLabel}
                   className="btn btn-sm btn-ghost btn-icon has-tip"
                 >
-                  <ArrowLeft className="w-4 h-4 text-[#B8934A]" />
+                  <ArrowLeft className="w-4 h-4 text-[#B8934A] rtl:rotate-180" />
                 </button>
               )}
 
@@ -144,12 +148,12 @@ export const ModalShell: React.FC<ModalShellProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="Close"
-                title="Close"
+                aria-label={t('common.close')}
+                title={t('common.close')}
                 className="btn btn-sm btn-secondary shrink-0"
               >
                 <X className="w-4 h-4" />
-                <span className="hidden sm:inline">Close</span>
+                <span className="hidden sm:inline">{t('common.close')}</span>
               </button>
             </div>
 
