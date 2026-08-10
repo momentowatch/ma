@@ -589,7 +589,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
 
               {/* Price */}
               <div className="text-2xl sm:text-3xl font-serif-luxury font-normal text-[#221F1B]">
-                {watch.formattedPrice}
+                {formatPrice(watch.price)}
               </div>
             </div>
 
@@ -620,7 +620,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
 
             {/* Description */}
             <div className="pt-4 border-t border-[#F0EAE0] space-y-2 text-xs text-[#736B60] leading-relaxed">
-              <p>{watch.description || watch.shortDescription}</p>
+              <p>{watch.fullDescription || watch.shortDescription}</p>
             </div>
           </motion.div>
 

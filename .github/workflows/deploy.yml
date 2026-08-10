@@ -14,6 +14,10 @@ concurrency:
   group: pages-ma
   cancel-in-progress: false
 
+env:
+  VITE_BASE_PATH: /ma/
+  VITE_SITE_URL: https://momentowatch.github.io/ma/
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -37,24 +41,25 @@ jobs:
 
       - name: Build
         run: npm run build
-        env:
-          VITE_BASE_PATH: /ma/
-          VITE_SITE_URL: https://momentowatch.github.io/ma/
 
       - name: Guard against wrong base path
         run: |
+          set -euo pipefail
           grep -q 'src="/ma/assets/' dist/index.html \
-            || { echo "::error::dist/index.html لا يشير إلى /ma/ — base خاطئ"; exit 1; }
+            || { echo "::error::dist/index.html does not reference /ma/ - wrong base"; exit 1; }
+
       - name: Verify social metadata in build output
         run: |
           set -euo pipefail
           for needle in 'og:image' 'og:title' 'og:url' 'twitter:card' 'rel="canonical"' 'site.webmanifest'; do
             grep -q "$needle" dist/index.html || { echo "::error::missing $needle in dist/index.html"; exit 1; }
           done
-          grep -q 'content="${{ env.VITE_SITE_URL }}"' dist/index.html \
+          grep -q "content=\"${VITE_SITE_URL}\"" dist/index.html \
             || { echo "::error::og:url does not match VITE_SITE_URL"; exit 1; }
-          grep -q '%VITE_SITE_URL%\|%BASE_URL%' dist/index.html \
-            && { echo "::error::unreplaced Vite HTML constant in dist/index.html"; exit 1; }
+          if grep -q '%VITE_SITE_URL%\|%BASE_URL%' dist/index.html; then
+            echo "::error::unreplaced Vite HTML constant in dist/index.html"
+            exit 1
+          fi
           for f in favicon.ico site.webmanifest apple-touch-icon.png og/og-image.jpg; do
             test -f "dist/$f" || { echo "::error::dist/$f missing"; exit 1; }
           done
@@ -64,6 +69,7 @@ jobs:
 
       - name: Verify SEO files reached dist
         run: |
+          set -euo pipefail
           test -f dist/robots.txt  || { echo "::error::robots.txt missing from dist"; exit 1; }
           test -f dist/sitemap.xml || { echo "::error::sitemap.xml missing from dist"; exit 1; }
           test -f dist/index.html  || { echo "::error::index.html missing from dist"; exit 1; }

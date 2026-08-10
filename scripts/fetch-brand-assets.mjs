@@ -136,10 +136,23 @@ for (const asset of ASSETS) {
 		if (verifyOnly) {
 			buf = await readFile(dest)
 		} else {
-			buf = await download(asset.path)
-			verifyBuffer(asset, buf)
-			await mkdir(dirname(dest), { recursive: true })
-			await writeFile(dest, buf)
+			// Reuse a byte-valid local copy first: CI must not depend on a
+			// third-party CDN being reachable. Only download what is missing
+			// or corrupt. The verification rules below are unchanged.
+			buf = await readFile(dest).catch(() => null)
+			if (buf) {
+				try {
+					verifyBuffer(asset, buf)
+				} catch {
+					buf = null
+				}
+			}
+			if (!buf) {
+				buf = await download(asset.path)
+				verifyBuffer(asset, buf)
+				await mkdir(dirname(dest), { recursive: true })
+				await writeFile(dest, buf)
+			}
 		}
 		const desc = verifyBuffer(asset, buf)
 		console.log(`  ok   ${asset.path.padEnd(24)} ${desc}  ${buf.length} B`)

@@ -75,6 +75,7 @@ export interface Watch {
   formattedPrice: string;     // `${price} dhs`
   shortDescription: string;
   fullDescription: string;
+  description?: string;
   photoIndices: number[];     // original 1-based indices shown by this listing
   images: string[];           // jsDelivr urls, same order as photoIndices
   imageFallbacks: string[];   // raw.githubusercontent urls, same order

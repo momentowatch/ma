@@ -6,6 +6,7 @@ import {
 import { Watch } from '../types';
 import { ModalShell } from './ui/ModalShell';
 import { Button, IconButton } from './ui/Button';
+import { useI18n } from '../i18n';
 
 interface WatchDetailModalProps {
   watch: Watch | null;
@@ -33,6 +34,10 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
   const [engravingText, setEngravingText] = useState('');
   const [giftWrapping, setGiftWrapping] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Single source of truth for prices (same helper WatchCard and
+  // WatchDetailPage already use). English output is unchanged: "210 dhs".
+  const { formatPrice } = useI18n();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScroll = useRef(false);
@@ -249,7 +254,7 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
 
             {/* Price */}
             <div className="text-3xl font-serif-luxury font-semibold text-[#221F1B] mb-6 pb-4 border-b border-[#E8E2D5]">
-              {watch.formattedPrice}
+              {formatPrice(watch.price)}
             </div>
 
             {/* Navigation Tabs (Overview, Specs, Custom Engraving) */}
@@ -363,7 +368,7 @@ export const WatchDetailModal: React.FC<WatchDetailModalProps> = ({
                   onClose();
                 }}
               >
-                Acquire ({watch.formattedPrice})
+                Acquire ({formatPrice(watch.price)})
               </Button>
 
               <IconButton
