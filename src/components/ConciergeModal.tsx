@@ -4,7 +4,6 @@ import { Watch } from '../types';
 import { createConciergeWhatsAppMessage, formatWhatsAppLink } from '../utils/whatsapp';
 import { ModalShell } from './ui/ModalShell';
 import { Button } from './ui/Button';
-import { useI18n } from '../i18n';
 
 interface ConciergeModalProps {
   isOpen: boolean;
@@ -13,25 +12,12 @@ interface ConciergeModalProps {
   onClose: () => void;
 }
 
-const CITIES = [
-  'Casablanca',
-  'Rabat',
-  'Marrakech',
-  'Tanger',
-  'Agadir',
-  'Fès',
-  'Other Morocco City',
-];
-
 export const ConciergeModal: React.FC<ConciergeModalProps> = ({
   isOpen,
   watch,
   selectedPhotoNumber = 1,
   onClose,
 }) => {
-  const { t, tData, formatPrice } = useI18n();
-  const i18nBundle = useI18n();
-
   const [name, setName] = useState('');
   const [city, setCity] = useState('Casablanca');
   const [notes, setNotes] = useState('');
@@ -42,12 +28,12 @@ export const ConciergeModal: React.FC<ConciergeModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const message = createConciergeWhatsAppMessage(i18nBundle, {
+    const message = createConciergeWhatsAppMessage({
       watchName: watch?.name,
       watchReference: watch?.referenceNumber,
       selectedPhotoNumber: selectedPhotoNumber || 1,
       clientName: name,
-      clientCity: tData('city', city),
+      clientCity: city,
       notes,
     });
     window.open(formatWhatsAppLink(message), '_blank');
@@ -58,8 +44,8 @@ export const ConciergeModal: React.FC<ConciergeModalProps> = ({
     <ModalShell
       open={isOpen}
       onClose={onClose}
-      title={t('concierge.title')}
-      subtitle={t('concierge.subtitle')}
+      title="Watch Specialist Concierge"
+      subtitle="Personal consultation & order inquiries"
       icon={<MessageSquare className="w-5 h-5 text-[#B8934A]" />}
       maxWidthClass="max-w-lg"
     >
@@ -83,22 +69,22 @@ export const ConciergeModal: React.FC<ConciergeModalProps> = ({
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-mono text-[10px] text-[#8C8275]">{watch.referenceNumber}</span>
                 <span className="text-[10px] uppercase font-semibold text-[#B8934A] bg-[#FAF5EB] px-2 py-0.5 rounded border border-[#E5DBCA]">
-                  {t('cart.photoBadge', { number: selectedPhotoNumber || 1 })}
+                  Photo #{selectedPhotoNumber || 1}
                 </span>
               </div>
               <h4 className="font-serif-luxury text-base text-[#221F1B] truncate">{watch.name}</h4>
-              <span className="font-serif-luxury text-xs font-semibold text-[#B8934A]">{formatPrice(watch.price)}</span>
+              <span className="font-serif-luxury text-xs font-semibold text-[#B8934A]">{watch.formattedPrice}</span>
             </div>
           </div>
         )}
 
         <div className="space-y-4 text-xs">
           <div>
-            <label className="font-semibold text-[#221F1B] block mb-1">{t('concierge.nameLabel')}</label>
+            <label className="font-semibold text-[#221F1B] block mb-1">Your Name</label>
             <input
               type="text"
               required
-              placeholder={t('concierge.namePlaceholder')}
+              placeholder="e.g. Karim Bennani"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full bg-white border border-[#E8E2D5] focus:border-[#B8934A] rounded-xl p-3 text-[#221F1B] outline-none"
@@ -106,25 +92,27 @@ export const ConciergeModal: React.FC<ConciergeModalProps> = ({
           </div>
 
           <div>
-            <label className="font-semibold text-[#221F1B] block mb-1">{t('concierge.cityLabel')}</label>
+            <label className="font-semibold text-[#221F1B] block mb-1">City in Morocco</label>
             <select
               value={city}
               onChange={(e) => setCity(e.target.value)}
               className="w-full bg-white border border-[#E8E2D5] focus:border-[#B8934A] rounded-xl p-3 text-[#221F1B] outline-none"
             >
-              {CITIES.map((c) => (
-                <option key={c} value={c}>
-                  {tData('city', c)}
-                </option>
-              ))}
+              <option value="Casablanca">Casablanca</option>
+              <option value="Rabat">Rabat</option>
+              <option value="Marrakech">Marrakech</option>
+              <option value="Tanger">Tanger</option>
+              <option value="Agadir">Agadir</option>
+              <option value="Fès">Fès</option>
+              <option value="Other Morocco City">Other City in Morocco</option>
             </select>
           </div>
 
           <div>
-            <label className="font-semibold text-[#221F1B] block mb-1">{t('concierge.notesLabel')}</label>
+            <label className="font-semibold text-[#221F1B] block mb-1">Inquiry / Special Request (Optional)</label>
             <textarea
               rows={3}
-              placeholder={t('concierge.notesPlaceholder')}
+              placeholder="Ask about availability, delivery time, custom engraving, or real store photos..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="w-full bg-white border border-[#E8E2D5] focus:border-[#B8934A] rounded-xl p-3 text-[#221F1B] outline-none resize-none"
@@ -140,35 +128,22 @@ export const ConciergeModal: React.FC<ConciergeModalProps> = ({
             block
             icon={<MessageSquare className="w-4 h-4 fill-white" />}
           >
-            {(() => {
-              const text = t('concierge.submit');
-              const parts = text.split('0652297244');
-              if (parts.length > 1) {
-                return (
-                  <>
-                    {parts[0]}
-                    <bdi className="force-ltr">0652297244</bdi>
-                    {parts[1]}
-                  </>
-                );
-              }
-              return text;
-            })()}
+            Connect via WhatsApp · 0652297244
           </Button>
         </div>
 
         <div className="pt-2 border-t border-[#E8E2D5] grid grid-cols-3 gap-2 text-center text-[10px] text-[#8C8275]">
           <div className="flex flex-col items-center gap-1">
             <Clock className="w-4 h-4 text-[#B8934A]" />
-            <span>{t('concierge.fastResponse')}</span>
+            <span>Fast Response</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <Shield className="w-4 h-4 text-[#B8934A]" />
-            <span>{t('common.cashOnDelivery')}</span>
+            <span>Cash on Delivery</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <MapPin className="w-4 h-4 text-[#B8934A]" />
-            <span>{t('concierge.boutiqueSupport')}</span>
+            <span>Boutique Support</span>
           </div>
         </div>
       </form>

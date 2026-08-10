@@ -5,12 +5,8 @@
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
-    "predev": "node scripts/fetch-brand-assets.mjs",
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "prebuild": "node scripts/fetch-brand-assets.mjs",
     "build": "vite build",
-    "assets": "node scripts/fetch-brand-assets.mjs",
-    "assets:verify": "node scripts/fetch-brand-assets.mjs --verify-only",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
@@ -23,25 +19,25 @@
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
     "lucide-react": "^0.546.0",
-    "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "express": "^4.21.2",
+    "dotenv": "^17.2.3",
+    "motion": "^12.23.24"
   },
   "devDependencies": {
-    "@playwright/test": "1.60.0",
-    "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
-    "typescript": "5.8.3",
+    "typescript": "~5.8.2",
     "vite": "^6.2.3",
-    "vitest": "4.1.7"
+    "@types/express": "^4.17.21",
+    "vitest": "4.1.7",
+    "@playwright/test": "1.60.0"
   },
   "engines": {
     "node": ">=20"

@@ -3,7 +3,6 @@ import { Smartphone, Sparkles } from 'lucide-react';
 import { Watch } from '../types';
 import { ModalShell } from './ui/ModalShell';
 import { Button } from './ui/Button';
-import { useI18n } from '../i18n';
 
 interface TryOnModalProps {
   isOpen: boolean;
@@ -16,7 +15,6 @@ export const TryOnModal: React.FC<TryOnModalProps> = ({
   watch,
   onClose,
 }) => {
-  const { t, formatMeasure } = useI18n();
   const [wristSize, setWristSize] = useState<number>(16.5); // cm
 
   if (!watch) return null;
@@ -26,13 +24,11 @@ export const TryOnModal: React.FC<TryOnModalProps> = ({
   const wristMm = wristSize * 10;
   const scale = Math.min(1.3, Math.max(0.7, (diameterMm / wristMm) * 3.8));
 
-  const formattedDiameter = formatMeasure(watch.specs.diameter);
-
   return (
     <ModalShell
       open={isOpen}
       onClose={onClose}
-      title={t('tryon.title')}
+      title="Wrist Fit Simulator"
       subtitle={watch.name}
       icon={<Smartphone className="w-5 h-5 text-[#B8934A]" />}
       maxWidthClass="max-w-xl"
@@ -66,18 +62,16 @@ export const TryOnModal: React.FC<TryOnModalProps> = ({
             </div>
           </div>
 
-          <div className="absolute bottom-3 start-3 bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-semibold text-[#8C8275] border border-[#E8E2D5] force-ltr">
-            Ref: {watch.referenceNumber} · {formattedDiameter}
+          <div className="absolute bottom-3 left-3 bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-semibold text-[#8C8275] border border-[#E8E2D5]">
+            Ref: {watch.referenceNumber} · {watch.specs.diameter} Case
           </div>
         </div>
 
         {/* Wrist Size Slider Controls */}
         <div className="space-y-3 surface-card p-4">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-[#221F1B]">{t('tryon.adjust')}</span>
-            <span className="font-mono font-bold text-[#B8934A]">
-              {formatMeasure(`${wristSize} cm`)} ({ (wristSize / 2.54).toFixed(1) }")
-            </span>
+            <span className="font-semibold text-[#221F1B]">Adjust Wrist Circumference</span>
+            <span className="font-mono font-bold text-[#B8934A]">{wristSize} cm ({ (wristSize / 2.54).toFixed(1) }")</span>
           </div>
 
           <input
@@ -91,15 +85,15 @@ export const TryOnModal: React.FC<TryOnModalProps> = ({
           />
 
           <div className="flex items-center justify-between text-[10px] text-[#8C8275]">
-            <span>{t('tryon.sizePetite')}</span>
-            <span>{t('tryon.sizeStandard')}</span>
-            <span>{t('tryon.sizeLarge')}</span>
+            <span>13 cm (Petite)</span>
+            <span>16.5 cm (Standard)</span>
+            <span>22 cm (Large)</span>
           </div>
         </div>
 
         {/* Quick Presets */}
         <div className="flex items-center justify-center gap-2">
-          <span className="text-xs text-[#8C8275]">{t('tryon.presets')}:</span>
+          <span className="text-xs text-[#8C8275]">Presets:</span>
           {[14, 16.5, 19, 21].map((size) => (
             <Button
               key={size}
@@ -107,14 +101,14 @@ export const TryOnModal: React.FC<TryOnModalProps> = ({
               size="sm"
               onClick={() => setWristSize(size)}
             >
-              {formatMeasure(`${size} cm`)}
+              {size} cm
             </Button>
           ))}
         </div>
 
         <div className="text-center text-xs text-[#736B60] flex items-center justify-center gap-1.5 pt-2">
           <Sparkles className="w-4 h-4 text-[#B8934A]" />
-          <span>{t('tryon.disclaimer')}</span>
+          <span>Scale estimation is based on case diameter relative to average wrist width.</span>
         </div>
       </div>
     </ModalShell>

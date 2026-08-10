@@ -13,9 +13,6 @@ import {
   validateCatalog,
 } from './sa3aCatalog';
 
-// NOTE: English-only. This is build-time data, not display output.
-// Never render this value in the UI - use formatPrice() from src/i18n/format.ts,
-// which localises both the digits and the currency suffix (dhs / dhs / درهم).
 const formatMad = (price: number): string => `${price} dhs`;
 
 const ratingFor = (p: Sa3aProduct) => Number((4.4 + (p.imageCount % 5) * 0.1).toFixed(1));
@@ -176,3 +173,11 @@ if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line no-console
   console.info('[catalog]', LISTING_STATS);
 }
+
+export const BRAND_STORY = {
+  title: 'MOMENTO',
+  subtitle: 'Casa Watch — Casablanca',
+  tagline: 'Real photos. Fair prices. Delivered across Morocco.',
+  craftsmanship:
+    'Every piece in this boutique is photographed in our own shop in Casablanca. What you see in the gallery is the exact watch we ship to you, from 160 dhs, with cash on delivery available nationwide.',
+};
