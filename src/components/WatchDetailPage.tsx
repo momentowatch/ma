@@ -20,6 +20,30 @@ const WHEEL_RESET_MS = 140;
 const NEIGHBOUR_RADIUS = 2;
 
 /**
+ * iOS / iPadOS only.
+ *
+ * WebKit implements no directional lock for Pointer Events. With
+ * touch-action: pan-y the page scroller owns the gesture from touchstart and
+ * dispatches pointercancel as soon as it commits to a vertical pan, which
+ * happens inside its own slop, before AXIS_LOCK_PX of horizontal travel can
+ * ever be measured. The carousel therefore receives zero pointermove events
+ * on an iPhone. Blink locks the axis itself, which is why the identical code
+ * works on Android. Touch events are never cancelled that way, so on Apple
+ * touch devices the drag runs through a touch listener instead.
+ */
+const IOS_INTENT_PX = 3;
+
+const detectAppleTouch = (): boolean => {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const iphone = /iPad|iPhone|iPod/.test(ua);
+  const ipadOS = /Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1;
+  return (iphone || ipadOS) && 'ontouchstart' in window;
+};
+
+const IS_APPLE_TOUCH = detectAppleTouch();
+
+/**
  * Module-level decode cache. It outlives the component, so coming back to a
  * watch that was already viewed costs zero network and zero decode time.
  */
@@ -245,6 +269,9 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
   /* Pointer Events cover finger, mouse and pen through one code path. */
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!looping) return;
+    // On Apple touch devices the touch listener below owns finger gestures.
+    // Mouse and pen on the same device still travel this path.
+    if (IS_APPLE_TOUCH && e.pointerType === 'touch') return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (pointerIdRef.current !== null) return;
     pointerIdRef.current = e.pointerId;
@@ -318,6 +345,129 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
     if (pointerIdRef.current !== e.pointerId) return;
     endDrag(0);
   };
+
+  /* ---------------------------------------------------------------------- *
+   * iOS / iPadOS only: native touch drag.
+   *
+   * Mirrors the Pointer Events path exactly, same constants, same paint and
+   * endDrag calls, so the motion is indistinguishable. The one thing it adds
+   * is preventDefault on a cancelable touchmove the instant horizontal intent
+   * is seen, which stops WebKit from starting its own scroll and therefore
+   * stops the pointercancel that kills the gesture today.
+   *
+   * React registers touchmove as a passive root listener, so onTouchMove in
+   * JSX cannot preventDefault. It has to be addEventListener with
+   * { passive: false }, exactly like the wheel handler below.
+   *
+   * Guarded by IS_APPLE_TOUCH: on every other device this effect returns on
+   * its first line and nothing at all changes.
+   * ---------------------------------------------------------------------- */
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || !looping || !IS_APPLE_TOUCH) return;
+
+    let touchId: number | null = null;
+    let startX = 0;
+    let startY = 0;
+    let startedAt = 0;
+    let axis: 'idle' | 'x' | 'y' = 'idle';
+    let dragPx = 0;
+
+    const stamp = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+    const pick = (list: TouchList): Touch | null => {
+      for (let i = 0; i < list.length; i += 1) {
+        if (list[i].identifier === touchId) return list[i];
+      }
+      return null;
+    };
+
+    const finish = (commit: 1 | -1 | 0) => {
+      touchId = null;
+      axis = 'idle';
+      dragPx = 0;
+      endDrag(commit);
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (touchId !== null) return;
+      if (event.touches.length !== 1) return;
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      touchId = touch.identifier;
+      startX = touch.clientX;
+      startY = touch.clientY;
+      startedAt = stamp();
+      axis = 'idle';
+      dragPx = 0;
+      settle();
+      paint(positionRef.current, 0, false);
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (touchId === null) return;
+      const touch = pick(event.changedTouches) || pick(event.touches);
+      if (!touch) return;
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+
+      if (axis === 'idle') {
+        if (Math.abs(dx) < IOS_INTENT_PX && Math.abs(dy) < IOS_INTENT_PX) return;
+        if (Math.abs(dy) > Math.abs(dx)) {
+          // Vertical intent. Never preventDefault, hand the page its scroll.
+          axis = 'y';
+          touchId = null;
+          return;
+        }
+        // Horizontal intent. Claim the gesture now, while touchmove is still
+        // cancelable. One frame later WebKit owns it and it is too late.
+        axis = 'x';
+      }
+
+      if (event.cancelable) event.preventDefault();
+
+      // Below the shared lock distance the strip stays still, so the feel
+      // matches the pointer path on every other device.
+      if (Math.abs(dx) < AXIS_LOCK_PX) return;
+
+      const width = viewport.clientWidth || 1;
+      dragPx = Math.max(-width, Math.min(width, dx));
+      if (!rafRef.current) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = 0;
+          paint(positionRef.current, dragPx, false);
+        });
+      }
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      if (touchId === null) return;
+      if (!pick(event.changedTouches)) return;
+      const width = viewport.clientWidth || 1;
+      const elapsed = Math.max(1, stamp() - startedAt);
+      const velocity = Math.abs(dragPx) / elapsed;
+      const far = Math.abs(dragPx) > width * COMMIT_RATIO;
+      const flick = velocity > COMMIT_VELOCITY && Math.abs(dragPx) > width * 0.06;
+      const committed = axis === 'x' && (far || flick);
+      finish(committed ? (dragPx < 0 ? 1 : -1) : 0);
+    };
+
+    const onTouchCancel = () => {
+      if (touchId === null) return;
+      finish(0);
+    };
+
+    viewport.addEventListener('touchstart', onTouchStart, { passive: true });
+    viewport.addEventListener('touchmove', onTouchMove, { passive: false });
+    viewport.addEventListener('touchend', onTouchEnd, { passive: true });
+    viewport.addEventListener('touchcancel', onTouchCancel, { passive: true });
+    return () => {
+      viewport.removeEventListener('touchstart', onTouchStart);
+      viewport.removeEventListener('touchmove', onTouchMove);
+      viewport.removeEventListener('touchend', onTouchEnd);
+      viewport.removeEventListener('touchcancel', onTouchCancel);
+    };
+  }, [looping, endDrag, paint, settle]);
 
   /* Trackpad: horizontal wheel deltas, registered non-passive so the browser
      does not steal the gesture. Vertical deltas fall through to the page. */
@@ -463,7 +613,7 @@ export const WatchDetailPage: React.FC<WatchDetailPageProps> = ({
                 onPointerLeave={handlePointerCancel}
                 className="w-full h-full overflow-hidden touch-pan-y select-none cursor-grab active:cursor-grabbing"
                 dir="ltr"
-                style={{ direction: 'ltr' }}
+                style={{ direction: 'ltr', WebkitTouchCallout: 'none' }}
               >
                 <div
                   ref={trackRef}
